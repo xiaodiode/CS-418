@@ -174,9 +174,8 @@ def scanline_algo(x, y, z, rgba):
 # print(dda_allPoints(a, b, "y"))
 # print(scanline_algo(a,b,c))
 
-
-coordXYZW = []
-coordRGBA = []
+positions = []
+colors = []
 
 
 with open(sys.argv[1], 'r') as filename:
@@ -193,28 +192,29 @@ with open(sys.argv[1], 'r') as filename:
             # print(width, height)
 
         elif line.startswith("position"):
+            coordSize = int(line.split()[1]) # stores the size of the coordinates
             floatsString = line.split()[2:]
-            line = line.replace("position", '')
+            # line = line.replace("position", '')
             # print("line", line)
-            coordSize = int(line.split()[0]) # stores the size of the coordinates
             print("coordSize: ", coordSize)
-            line = ''.join(line.split()[1:]) # removes size so rest of line are coordinates
-            # x, y = (int(i) for i in line.split())
-            tempCount = 0
             
             floats = [float(num) for num in floatsString]
-            # print("floats: ", floats)
-            for i in floats:
-                coordXYZW.append(float(i))
-                tempCount += 1 
-                # accounts for missing coordinates to make 4-vectors
-                if(coordSize == 2 and tempCount%4 != 0 and tempCount%2 == 0): 
-                    coordXYZW.append(0)
-                    coordXYZW.append(1)
-                elif(coordSize == 3 and tempCount%3 == 0):
-                    coordXYZW.append(1)
-                # print(coordXYZW)
-            print("coordXYZW: ", coordXYZW)
+            print("floats for position: ", floats)
+
+            if coordSize == 2:
+                for i in range(0, len(floats), 2):
+                    coordXYZW = floats[i:i+2] + [0, 1]
+                    positions.append(coordXYZW)
+            elif coordSize == 3:
+                for i in range(0, len(floats), 3):
+                    coordXYZW = floats[i:i+3] + [1]
+                    positions.append(coordXYZW)
+            elif coordSize == 4:
+                for i in range(0, len(floats), 4):
+                    coordXYZW = floats[i:i+4]
+                    positions.append(coordXYZW)
+            
+            print("positions: ", positions)
 
         elif line.find("color") != -1:
             colorSize = int(line.split()[1])
@@ -224,15 +224,18 @@ with open(sys.argv[1], 'r') as filename:
             # line = ''.join(line.split()[1:]) # removes size so rest of line are rgba vals
             
             floats = [float(num) for num in floatsString]
-            tempCount = 0 
-            for i in floats:
-                coordRGBA.append(int(i))
-                tempCount += 1
+            print("floats for color: ", floats)
 
-                if(colorSize == 3 and tempCount%3 == 0):
-                    coordRGBA.append(1)
-            print("coordRGBA",coordRGBA)
-            # print(coordRGBA)
+            if coordSize == 3:
+                for i in range(0, len(floats), 3):
+                    coordRGBA = floats[i:i+3] + [1]
+                    colors.append(coordRGBA)
+            elif coordSize == 4:
+                for i in range(0, len(floats), 4):
+                    coordRGBA = floats[i:i+4]
+                    colors.append(coordRGBA)
+
+            print("colors", colors)
 
         elif line.find("drawArraysTriangles") != -1:
             first = int(line.split()[1]) # stores the size of the color
