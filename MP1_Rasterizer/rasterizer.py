@@ -226,11 +226,11 @@ with open(sys.argv[1], 'r') as filename:
             floats = [float(num) for num in floatsString]
             print("floats for color: ", floats)
 
-            if coordSize == 3:
+            if colorSize == 3:
                 for i in range(0, len(floats), 3):
                     coordRGBA = floats[i:i+3] + [1]
                     colors.append(coordRGBA)
-            elif coordSize == 4:
+            elif colorSize == 4:
                 for i in range(0, len(floats), 4):
                     coordRGBA = floats[i:i+4]
                     colors.append(coordRGBA)
@@ -240,61 +240,64 @@ with open(sys.argv[1], 'r') as filename:
         elif line.find("drawArraysTriangles") != -1:
             first = int(line.split()[1]) # stores the size of the color
             count = int(line.split()[2])
-            line = line.replace("drawArraysTriangles", ''). replace(" ", '').replace("\t", '').replace("\n", '')
+            # line = line.replace("drawArraysTriangles", ''). replace(" ", '').replace("\t", '').replace("\n", '')
             
             # print("first, count: ",first,count)
-            line = ''.join(line.split()[2:])
+            # line = ''.join(line.split()[2:])
             # print(fileContents)
 
             pointsToDraw = []
-            for i in range(int(count/3)):
-                print(i)
-                x1 = coordXYZW[first*4*(i+1)]
-                y1 = coordXYZW[(first*4*(i+1))+1]
-                z1 = coordXYZW[(first*4*(i+1))+2]
-                w1 = coordXYZW[(first*4*(i+1))+3]
+            for i in range(0, count, 3):
+                pointsToDraw = [positions[first], positions[first + 1], positions[first + 2]]
+            
+            print("pointsToDraw: ", pointsToDraw)
+            #     print(i)
+            #     x1 = coordXYZW[first*4*(i+1)]
+            #     y1 = coordXYZW[(first*4*(i+1))+1]
+            #     z1 = coordXYZW[(first*4*(i+1))+2]
+            #     w1 = coordXYZW[(first*4*(i+1))+3]
                 
-                # ((x/w+1)*width/2, (y/w+1)*height/2)
-                newX1 = (x1/w1+1)*width/2
-                newY1 = (y1/w1+1)*height/2
+            #     # ((x/w+1)*width/2, (y/w+1)*height/2)
+            #     newX1 = (x1/w1+1)*width/2
+            #     newY1 = (y1/w1+1)*height/2
 
-                # print("first*4*(i+2): ",first*4*(i+1))
-                x2 = coordXYZW[(first*4*(i+1))+4]
-                y2 = coordXYZW[(first*4*(i+1))+5]
-                z2 = coordXYZW[(first*4*(i+1))+6]
-                w2 = coordXYZW[(first*4*(i+1))+7]
+            #     # print("first*4*(i+2): ",first*4*(i+1))
+            #     x2 = coordXYZW[(first*4*(i+1))+4]
+            #     y2 = coordXYZW[(first*4*(i+1))+5]
+            #     z2 = coordXYZW[(first*4*(i+1))+6]
+            #     w2 = coordXYZW[(first*4*(i+1))+7]
                 
-                # ((x/w+1)*width/2, (y/w+1)*height/2)
-                newX2 = (x2/w2+1)*width/2
-                newY2 = (y2/w2+1)*height/2
+            #     # ((x/w+1)*width/2, (y/w+1)*height/2)
+            #     newX2 = (x2/w2+1)*width/2
+            #     newY2 = (y2/w2+1)*height/2
 
-                x3 = coordXYZW[(first*4*(i+1))+8]
-                y3 = coordXYZW[(first*4*(i+1))+9]
-                z3 = coordXYZW[(first*4*(i+1))+10]
-                w3 = coordXYZW[(first*4*(i+1))+11]
-                # print("x3,y3,z3,w3: ",x3,y3,z3,w3)
+            #     x3 = coordXYZW[(first*4*(i+1))+8]
+            #     y3 = coordXYZW[(first*4*(i+1))+9]
+            #     z3 = coordXYZW[(first*4*(i+1))+10]
+            #     w3 = coordXYZW[(first*4*(i+1))+11]
+            #     # print("x3,y3,z3,w3: ",x3,y3,z3,w3)
                 
-                # ((x/w+1)*width/2, (y/w+1)*height/2)
-                newX3 = (x3/w3+1)*width/2
-                newY3 = (y3/w3+1)*height/2
+            #     # ((x/w+1)*width/2, (y/w+1)*height/2)
+            #     newX3 = (x3/w3+1)*width/2
+            #     newY3 = (y3/w3+1)*height/2
 
-                print("newXs and newYs: ", newX1,newY1,newX2,newY2,newX3,newY3)
-                print(coordRGBA[first*4:first*4+4])
-                pointsToDraw += scanline_algo([newX1,newY1],[newX2,newY2],[newX3,newY3], coordRGBA[first*4:first*4+4])
-                print("pointsToDraw: ",pointsToDraw)
-                # print(coordXYZW[first*4],coordXYZW[(first*4)+1],coordXYZW[(first*4)+2],coordXYZW[(first*4)+3])
-                # print(coordRGBA[i*4], coordRGBA[(i*4)+1], coordRGBA[(i*4)+2], coordRGBA[(i*4)+3])
-            currPixel = 0
-            while currPixel < count:
-                for point in pointsToDraw:
-                    # print("point:", point)
-                    x = point[0]
-                    y = point[1]
-                    image.putpixel((int(x),int(y)), (coordRGBA[first*4*(currPixel+1)], 
-                    coordRGBA[first*4*(currPixel+1)+1], coordRGBA[first*4*(currPixel+1)+2], 
-                    coordRGBA[first*4*(currPixel+1)+3]))
-                    currPixel += 1
-                # print(pngName)
+            #     print("newXs and newYs: ", newX1,newY1,newX2,newY2,newX3,newY3)
+            #     print(coordRGBA[first*4:first*4+4])
+            #     pointsToDraw += scanline_algo([newX1,newY1],[newX2,newY2],[newX3,newY3], coordRGBA[first*4:first*4+4])
+            #     print("pointsToDraw: ",pointsToDraw)
+            #     # print(coordXYZW[first*4],coordXYZW[(first*4)+1],coordXYZW[(first*4)+2],coordXYZW[(first*4)+3])
+            #     # print(coordRGBA[i*4], coordRGBA[(i*4)+1], coordRGBA[(i*4)+2], coordRGBA[(i*4)+3])
+            # currPixel = 0
+            # while currPixel < count:
+            #     for point in pointsToDraw:
+            #         # print("point:", point)
+            #         x = point[0]
+            #         y = point[1]
+            #         image.putpixel((int(x),int(y)), (coordRGBA[first*4*(currPixel+1)], 
+            #         coordRGBA[first*4*(currPixel+1)+1], coordRGBA[first*4*(currPixel+1)+2], 
+            #         coordRGBA[first*4*(currPixel+1)+3]))
+            #         currPixel += 1
+            #     # print(pngName)
             
                 
 image.save(pngName, "PNG")
