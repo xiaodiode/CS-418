@@ -2,7 +2,7 @@ from PIL import Image
 import sys
 import math
 
-def dda_setup(a, b, dimension, a_rgba, b_rgba):
+def dda_setup(a, b, dimension, a_rgba, B_rgba):
     if(dimension == "x"):
         d = 0 
     else:
@@ -24,15 +24,15 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
         b = temp
 
         temp = a_rgba
-        a_rgba = b_rgba
-        b_rgba = temp
+        a_rgba = B_rgba
+        B_rgba = temp
         # print("a, b:", a,b)
 
     pointDiff = [b[0]-a[0], b[1]-a[1]]
     colorDiff = []
 
     for i in range(4):
-        colorDiff += [b_rgba[i] - a_rgba[i]]
+        colorDiff += [B_rgba[i] - a_rgba[i]]
 
 
     # print("colorDiff: ", colorDiff, " b_rgba: ", b_rgba, " a_rgba: ", a_rgba)
@@ -50,13 +50,13 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
 
     return s # s should be [] of size 6
 
-def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
+def dda_firstPoint(a, b, dimension, a_rgba, B_rgba):
     if(dimension == "x"):
         d = 0 
     else:
         d = 1
     
-    s = dda_setup(a, b, dimension, a_rgba, b_rgba)
+    s = dda_setup(a, b, dimension, a_rgba, B_rgba)
     if(a[d] > b[d]): # swap a and b
         # print("a, b:", a,b)
         temp = a
@@ -64,8 +64,8 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
         b = temp
 
         temp = a_rgba
-        a_rgba = b_rgba
-        b_rgba = temp
+        a_rgba = B_rgba
+        B_rgba = temp
         # print("a, b:", a,b)
     # print("s: ", s)
     
@@ -80,7 +80,7 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
         if(i < 2):
             p += [a[i] + o[i]]
         else:
-            p += [b_rgba[i-2] + o[i]]
+            p += [a_rgba[i-2] + o[i]]
     
     
 
@@ -89,17 +89,17 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
         # print("p[i]+s[i]: ", p[i],s[i])
         # p[i] += s[i]
         # print("a,o,p: ", a,o,p)
-    p += b_rgba
+    # p += B_rgba
 
     # p += a_rgba
 
     print("p: ",p)
     return p
 
-def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
+def dda_allPoints(a, b, dimension, a_rgba, B_rgba):
     all_p = []
     # print("dimensions", dimension)
-    p = dda_firstPoint(a, b, dimension, a_rgba, b_rgba)
+    p = dda_firstPoint(a, b, dimension, a_rgba, B_rgba)
     # all_p.append(p.copy())
     
     # print("all_p: ", all_p)
@@ -114,7 +114,7 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
     else:
         d = 1
     
-    s = dda_setup(a, b, dimension, a_rgba, b_rgba)
+    s = dda_setup(a, b, dimension, a_rgba, B_rgba)
     if(a[d] > b[d]): # swap a and b
         # print("a, b:", a,b)
         temp = a
@@ -122,15 +122,15 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
         b = temp
 
         temp = a_rgba
-        a_rgba = b_rgba
-        b_rgba = temp
+        a_rgba = B_rgba
+        B_rgba = temp
 
         # print("a, b:", a,b)
     # print("a,b,d,s: ", a,b,d,s)
     # print("p[d],b[d]",p[d],b[d])
     while p[d] < b[d]:
         all_p.append(p.copy())
-        # p = s[:2] + b_rgba
+        # p = s[:2] + B_rgba
         # print("p: ", p)
         for i in range(6):
             p[i] += s[i]
@@ -205,9 +205,6 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
         for i in range(6):
             p[i] += s[i]
             p_long[i] += s_long[i]
-
-    for i in range(len(points)):
-       points[i] = points[i][:2] + points[i][6:10]
 
     return points
 # ((x/w+1)*width/2, (y/w+1)*height/2)
