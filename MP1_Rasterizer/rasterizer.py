@@ -46,8 +46,6 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
     for c_coord in colorDiff:
         s.append(c_coord/(b[d] - a[d]))
 
-    # s += b_rgba 
-
     # print("s: ", s)
 
     return s # s should be [] of size 6
@@ -72,7 +70,7 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
     o = []
     p = []
    
-    print("o, s:", o, s)
+    # print("o, s:", o, s)
     e = math.ceil(a[d]) - a[d] # calculates distance between a_d and next integer
     # print("e: ", e)
     for i in range(6):
@@ -113,7 +111,6 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
     # print("p[d],b[d]",p[d],b[d])
     while p[d] < b[d]:
         all_p.append(p.copy())
-        # p = s[:2] + b_rgba
         # print("p: ", p)
         for i in range(6):
             p[i] += s[i]
@@ -159,12 +156,10 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
     # step 5
     s = dda_setup(t, m, "y", t_rgba, m_rgba)
     p = dda_firstPoint(t, m , "y", t_rgba, m_rgba)
-    # print("s_long,p_long,s,p: ", s_long,p_long,s,p)
 
     # step 6
     points = []
     while p[1] < m[1]:
-        # print("top p,p_long: ",p,p_long)
         points += dda_allPoints(p[0:2], p_long[0:2], "x", p[2:], p_long[2:])
         # print("points: ", points)
         for i in range(6):
@@ -178,11 +173,8 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 
     # step 8
     while p[1] < b[1]:
-        # print("bottom p,p_long: ",p,p_long)
         points += dda_allPoints(p[0:2], p_long[0:2], "x", p[2:], p_long[2:])
-        # if(p == p_long):
-        #     print("matching: ",p)
-        #     points += p
+        
         for i in range(6):
             p[i] += s[i]
             p_long[i] += s_long[i]
@@ -205,8 +197,8 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 # # print(dda_allPoints(a, b, "y", a_rgba, b_rgba))
 # print(scanline_algo(a,b,c, a_rgba, b_rgba, c_rgba))
 
-positions = []
-colors = []
+
+
 
 
 with open(sys.argv[1], 'r') as filename:
@@ -223,10 +215,10 @@ with open(sys.argv[1], 'r') as filename:
             # print(width, height)
 
         elif line.startswith("position"):
+            positions = []
             coordSize = int(line.split()[1]) # stores the size of the coordinates
             floatsString = line.split()[2:]
-            # line = line.replace("position", '')
-            # print("line", line)
+
             print("coordSize: ", coordSize)
             
             floats = [float(num) for num in floatsString]
@@ -248,6 +240,7 @@ with open(sys.argv[1], 'r') as filename:
             print("positions: ", positions)
 
         elif line.find("color") != -1:
+            colors = []
             colorSize = int(line.split()[1])
             floatsString = line.split()[2:]
             # line = line.replace("color", '')
@@ -292,6 +285,7 @@ with open(sys.argv[1], 'r') as filename:
 
                     pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2])
 
+                print("positionsToDraw: ", positionsToDraw)
                 print("pointsToDraw: ", pointsToDraw)
                 print("colorsToDraw: ", colorsToDraw)
 
@@ -314,8 +308,9 @@ with open(sys.argv[1], 'r') as filename:
                     b = pixel[4]*255
                     a = pixel[5]*255
                     # print("rgba: ", r,g,b,a)
-
-                    image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                    if(-width < x < width and -height < y < height):
+                        print("printing x,y: ", x,y)
+                        image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
                 # print("pixelsToDraw: ", pixelsToDraw)
 
             
