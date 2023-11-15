@@ -16,8 +16,8 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
     # print("a_d and b_d, dimension: ", a_d,b_d,dimension)
     if(a[d] == b[d]):
         if(dimension == "x"):
-            return [0,0,0,0,0,0]
-        return [0,0,0,0,0,0]
+            return [0,0,0,0,0,0,0]
+        return [0,0,0,0,0,0,0]
     
     elif(a[d] > b[d]): # swap a and b
         # print("a, b:", a,b)
@@ -30,8 +30,11 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
         b_rgba = temp
         # print("a, b:", a,b)
 
-    pointDiff = [b[0]-a[0], b[1]-a[1]]
+    pointDiff = []
     colorDiff = []
+
+    for i in range(3):
+        pointDiff += [b[i] - a[i]]
 
     for i in range(4):
         colorDiff += [b_rgba[i] - a_rgba[i]]
@@ -73,12 +76,14 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
     # print("o, s:", o, s)
     e = math.ceil(a[d]) - a[d] # calculates distance between a_d and next integer
     # print("e: ", e)
-    for i in range(6):
+    for i in range(7):
         o.append(s[i]*e) # o is of distance e and obtains the direction of s vector
-        if(i < 2):
+        
+        if(i < 3):
             p += [a[i] + o[i]]
+
         else:
-            p += [a_rgba[i-2] + o[i]]
+            p += [a_rgba[i-3] + o[i]]
 
     print("p: ",p)
     return p
@@ -87,9 +92,7 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
     all_p = []
     # print("dimensions", dimension)
     p = dda_firstPoint(a, b, dimension, a_rgba, b_rgba)
-    # all_p.append(p.copy())
     
-    # print("all_p: ", all_p)
     # print("p: ", p)
 
     if(dimension == "x"):
@@ -109,8 +112,8 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
 
     while p[d] < b[d]:
         all_p.append(p.copy())
-        # print("p: ", p)
-        for i in range(6):
+       
+        for i in range(7):
             p[i] += s[i]
             # print("p[i]: ", p[i], "s[i]: ", s[i])
     # print("all_p,dimension", all_p,dimension)
@@ -158,7 +161,7 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
     # step 6
     points = []
     while p[1] < m[1]:
-        points += dda_allPoints(p[0:2], p_long[0:2], "x", p[2:], p_long[2:])
+        points += dda_allPoints(p[0:3], p_long[0:3], "x", p[3:], p_long[3:])
         # print("points: ", points)
         for i in range(6):
             p[i] += s[i]
@@ -171,9 +174,9 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 
     # step 8
     while p[1] < b[1]:
-        points += dda_allPoints(p[0:2], p_long[0:2], "x", p[2:], p_long[2:])
+        points += dda_allPoints(p[0:3], p_long[0:3], "x", p[3:], p_long[3:])
         
-        for i in range(6):
+        for i in range(7):
             p[i] += s[i]
             p_long[i] += s_long[i]
 
@@ -197,7 +200,7 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 
 
 
-
+depth = False
 
 with open(sys.argv[1], 'r') as filename:
     fileContents = filename.readlines()
@@ -255,20 +258,12 @@ with open(sys.argv[1], 'r') as filename:
                     colors.append(coordRGBA)
 
             print("colors", colors)
-        
-        elif line.find("elements") != -1:
-            intString = line.split()[1:]
-            
-            elements = [int(num) for num in intString]
-
-            print("elements: ", elements)
 
         elif line.find("drawArraysTriangles") != -1:
             first = int(line.split()[1]) # stores the size of the color
             count = int(line.split()[2])
 
             positionsToDraw = []
-
             colorsToDraw = []
             
             pixelsToDraw = []
@@ -285,7 +280,7 @@ with open(sys.argv[1], 'r') as filename:
                     z = positionsToDraw[j][2]
                     w = positionsToDraw[j][3]
 
-                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2])
+                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z])
 
                 print("positionsToDraw: ", positionsToDraw)
                 print("pointsToDraw: ", pointsToDraw)
@@ -301,19 +296,38 @@ with open(sys.argv[1], 'r') as filename:
 
                 pixelsToDraw += scanline_algo(a, b, c, a_rgba, b_rgba, c_rgba)
                 
+                currPixels = []
 
                 for pixel in pixelsToDraw:
                     x = pixel[0]
                     y = pixel[1]
-                    r = pixel[2]*255
-                    g = pixel[3]*255
-                    b = pixel[4]*255
-                    a = pixel[5]*255
-                    # print("rgba: ", r,g,b,a)
+                    z = pixel[2]
+                    r = pixel[3]*255
+                    g = pixel[4]*255
+                    b = pixel[5]*255
+                    a = pixel[6]*255
+                    
+                    # print("x,y,z: ", x,y,z)
+                    
                     if(-width < x < width and -height < y < height):
-                        print("printing x,y: ", x,y)
-                        image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                        existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
+                        # print("existingPos: ", existingPos)
+                        if(existingPos):
+                            if(existingPos[0][2] > z):
+                                image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+
+                        else:
+                            image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                            currPixels.append([x,y,z])
+                        
                 # print("pixelsToDraw: ", pixelsToDraw)
+
+        elif line.find("elements") != -1:
+            intString = line.split()[1:]
+            
+            elements = [int(num) for num in intString]
+
+            # print("elements: ", elements)
 
         elif line.find("drawElementsTriangles") != -1:
             count = int(line.split()[1]) # stores how many triangles
@@ -337,7 +351,7 @@ with open(sys.argv[1], 'r') as filename:
                     z = positionsToDraw[j][2]
                     w = positionsToDraw[j][3]
 
-                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2])
+                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z])
 
                 print("positionsToDraw: ", positionsToDraw)
                 print("pointsToDraw: ", pointsToDraw)
@@ -353,19 +367,34 @@ with open(sys.argv[1], 'r') as filename:
 
                 pixelsToDraw += scanline_algo(a, b, c, a_rgba, b_rgba, c_rgba)
                 
+                currPixels = []
 
                 for pixel in pixelsToDraw:
                     x = pixel[0]
                     y = pixel[1]
-                    r = pixel[2]*255
-                    g = pixel[3]*255
-                    b = pixel[4]*255
-                    a = pixel[5]*255
-                    # print("rgba: ", r,g,b,a)
+                    z = pixel[2]
+                    r = pixel[3]*255
+                    g = pixel[4]*255
+                    b = pixel[5]*255
+                    a = pixel[6]*255
+                    
+                    # print("x,y,z: ", x,y,z)
+                    
                     if(-width < x < width and -height < y < height):
-                        print("printing x,y: ", x,y)
-                        image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                        existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
+                        # print("existingPos: ", existingPos)
+                        if(existingPos):
+                            if(existingPos[0][2] > z):
+                                image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+
+                        else:
+                            image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                            currPixels.append([x,y,z])
+
             
+        elif line.find("depth") != -1:    
+            depth = True
+         
                 
 image.save(pngName, "PNG")
 # ...
