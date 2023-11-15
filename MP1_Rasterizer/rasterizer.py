@@ -198,9 +198,10 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 # # print(dda_allPoints(a, b, "y", a_rgba, b_rgba))
 # print(scanline_algo(a,b,c, a_rgba, b_rgba, c_rgba))
 
-
+existingPos = None
 
 depth = False
+sRGB = False
 
 with open(sys.argv[1], 'r') as filename:
     fileContents = filename.readlines()
@@ -214,16 +215,22 @@ with open(sys.argv[1], 'r') as filename:
             width, height = (int(i) for i in line.split())
             image = Image.new("RGBA", (width, height), (0,0,0,0))
             # print(width, height)
+            
+        elif line.find("depth") != -1:    
+            depth = True
+        
+        elif line.find("sRGB") != -1:
+            sRGB = True
 
         elif line.startswith("position"):
             positions = []
             coordSize = int(line.split()[1]) # stores the size of the coordinates
             floatsString = line.split()[2:]
 
-            print("coordSize: ", coordSize)
+            # print("coordSize: ", coordSize)
             
             floats = [float(num) for num in floatsString]
-            print("floats for position: ", floats)
+            # print("floats for position: ", floats)
 
             if coordSize == 2:
                 for i in range(0, len(floats), 2):
@@ -246,7 +253,7 @@ with open(sys.argv[1], 'r') as filename:
             floatsString = line.split()[2:]
             
             floats = [float(num) for num in floatsString]
-            print("floats for color: ", floats)
+            # print("floats for color: ", floats)
 
             if colorSize == 3:
                 for i in range(0, len(floats), 3):
@@ -299,6 +306,13 @@ with open(sys.argv[1], 'r') as filename:
                 currPixels = []
 
                 for pixel in pixelsToDraw:
+                    if sRGB:
+                        for i in range(3,7):
+                            if(pixel[i] <= 0.0031308):
+                                pixel[i] *= 12.92
+                            else:
+                                pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
+      
                     x = pixel[0]
                     y = pixel[1]
                     z = pixel[2]
@@ -310,8 +324,9 @@ with open(sys.argv[1], 'r') as filename:
                     # print("x,y,z: ", x,y,z)
                     
                     if(-width < x < width and -height < y < height):
-                        existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
-                        # print("existingPos: ", existingPos)
+                        if depth:
+                            existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
+                            # print("existingPos: ", existingPos)
                         if(existingPos):
                             if(existingPos[0][2] > z):
                                 image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
@@ -370,6 +385,16 @@ with open(sys.argv[1], 'r') as filename:
                 currPixels = []
 
                 for pixel in pixelsToDraw:
+                    print("original pixel[3]: ", pixel[3])
+                    if sRGB:
+                        for i in range(3,7):
+                            if(pixel[i] <= 0.0031308):
+                                pixel[i] *= 12.92
+                            else:
+                                pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
+                            if i == 3:
+                                print("changed pixel[3]: ", pixel[3])
+                    print("original pixel[3]: ", pixel[3])
                     x = pixel[0]
                     y = pixel[1]
                     z = pixel[2]
@@ -381,8 +406,9 @@ with open(sys.argv[1], 'r') as filename:
                     # print("x,y,z: ", x,y,z)
                     
                     if(-width < x < width and -height < y < height):
-                        existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
-                        # print("existingPos: ", existingPos)
+                        if depth:
+                            existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
+                            # print("existingPos: ", existingPos)
                         if(existingPos):
                             if(existingPos[0][2] > z):
                                 image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
@@ -392,8 +418,7 @@ with open(sys.argv[1], 'r') as filename:
                             currPixels.append([x,y,z])
 
             
-        elif line.find("depth") != -1:    
-            depth = True
+        
          
                 
 image.save(pngName, "PNG")
