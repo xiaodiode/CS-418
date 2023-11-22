@@ -8,16 +8,10 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
     else:
         d = 1
 
-    # print("a, b: ", a,b)
-    # print("a and d: ", a,d)
-    # a_d = a[d]
-    # # print("a_d: ", a_d)
-    # b_d = b[d]
-    # print("a_d and b_d, dimension: ", a_d,b_d,dimension)
     if(a[d] == b[d]):
         if(dimension == "x"):
-            return [0,0,0,0,0,0,0]
-        return [0,0,0,0,0,0,0]
+            return [0,0,0,0,0,0,0,0]
+        return [0,0,0,0,0,0,0,0]
     
     elif(a[d] > b[d]): # swap a and b
         # print("a, b:", a,b)
@@ -33,7 +27,7 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
     pointDiff = []
     colorDiff = []
 
-    for i in range(3):
+    for i in range(4):
         pointDiff += [b[i] - a[i]]
 
     for i in range(4):
@@ -76,14 +70,14 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
     # print("o, s:", o, s)
     e = math.ceil(a[d]) - a[d] # calculates distance between a_d and next integer
     # print("e: ", e)
-    for i in range(7):
+    for i in range(8):
         o.append(s[i]*e) # o is of distance e and obtains the direction of s vector
         
-        if(i < 3):
+        if(i < 4):
             p += [a[i] + o[i]]
 
         else:
-            p += [a_rgba[i-3] + o[i]]
+            p += [a_rgba[i-4] + o[i]]
 
     print("p: ",p)
     return p
@@ -113,7 +107,7 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
     while p[d] < b[d]:
         all_p.append(p.copy())
        
-        for i in range(7):
+        for i in range(8):
             p[i] += s[i]
             # print("p[i]: ", p[i], "s[i]: ", s[i])
     # print("all_p,dimension", all_p,dimension)
@@ -141,10 +135,9 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 
         else:
             m = trianglePoints[i]
-            print("m: ",m)
             m_rgba = rgbaPoints[i]
 
-    print("t, b, m: ", t, b, m)
+    # print("t, b, m: ", t, b, m)
 
     # step 4
     s_long = dda_setup(t, b, "y", t_rgba, b_rgba)   # setup for long edge
@@ -161,9 +154,9 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
     # step 6
     points = []
     while p[1] < m[1]:
-        points += dda_allPoints(p[0:3], p_long[0:3], "x", p[3:], p_long[3:])
+        points += dda_allPoints(p[0:4], p_long[0:4], "x", p[4:], p_long[4:])
         # print("points: ", points)
-        for i in range(6):
+        for i in range(8):
             p[i] += s[i]
             p_long[i] += s_long[i]
 
@@ -174,9 +167,9 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 
     # step 8
     while p[1] < b[1]:
-        points += dda_allPoints(p[0:3], p_long[0:3], "x", p[3:], p_long[3:])
+        points += dda_allPoints(p[0:4], p_long[0:4], "x", p[4:], p_long[4:])
         
-        for i in range(7):
+        for i in range(8):
             p[i] += s[i]
             p_long[i] += s_long[i]
 
@@ -202,6 +195,9 @@ existingPos = None
 
 depth = False
 sRGB = False
+hyp = False
+
+currPixels = []
 
 with open(sys.argv[1], 'r') as filename:
     fileContents = filename.readlines()
@@ -221,6 +217,9 @@ with open(sys.argv[1], 'r') as filename:
         
         elif line.find("sRGB") != -1:
             sRGB = True
+
+        elif line.find("hyp") != -1:
+            hyp = True
 
         elif line.startswith("position"):
             positions = []
@@ -287,7 +286,7 @@ with open(sys.argv[1], 'r') as filename:
                     z = positionsToDraw[j][2]
                     w = positionsToDraw[j][3]
 
-                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z])
+                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z/w, 1/w])
 
                 print("positionsToDraw: ", positionsToDraw)
                 print("pointsToDraw: ", pointsToDraw)
@@ -297,31 +296,50 @@ with open(sys.argv[1], 'r') as filename:
                 b = pointsToDraw[1]
                 c = pointsToDraw[2]
 
+                a_rgba = []
+                b_rgba = []
+                c_rgba = []
+
+                # if hyp:
+                #     for i in range(3):
+                #         a_rgba += [colorsToDraw[0][i]/w]
+                #         b_rgba += [colorsToDraw[1][i]/w]
+                #         c_rgba += [colorsToDraw[2][i]/w]
+                #     a_rgba += [colorsToDraw[0][3]]
+                #     b_rgba += [colorsToDraw[1][3]]
+                #     c_rgba += [colorsToDraw[2][3]]
+
+                # else:
                 a_rgba = colorsToDraw[0]
                 b_rgba = colorsToDraw[1]
                 c_rgba = colorsToDraw[2]
 
+
+                print("new colorsToDraw: ", a_rgba, b_rgba, c_rgba)
+
                 pixelsToDraw += scanline_algo(a, b, c, a_rgba, b_rgba, c_rgba)
-                
-                currPixels = []
 
                 for pixel in pixelsToDraw:
-                    if sRGB:
-                        for i in range(3,7):
+                    x = pixel[0]
+                    y = pixel[1]
+                    z = pixel[2]
+                    w = pixel[3]
+                    
+                    for i in range(4,8):
+                        # if hyp:
+                        #     pixel[i] /= w # divide rgb by interpolated 1/w
+                        if sRGB:
                             if(pixel[i] <= 0.0031308):
                                 pixel[i] *= 12.92
                             else:
                                 pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
       
-                    x = pixel[0]
-                    y = pixel[1]
-                    z = pixel[2]
-                    r = pixel[3]*255
-                    g = pixel[4]*255
-                    b = pixel[5]*255
-                    a = pixel[6]*255
                     
-                    # print("x,y,z: ", x,y,z)
+                    r = pixel[4]*255
+                    g = pixel[5]*255
+                    b = pixel[6]*255
+                    a = pixel[7]*255
+                    
                     
                     if(-width < x < width and -height < y < height):
                         if depth:
@@ -329,7 +347,9 @@ with open(sys.argv[1], 'r') as filename:
                             # print("existingPos: ", existingPos)
                         if(existingPos):
                             if(existingPos[0][2] > z):
+                                currPixels.remove(existingPos[0])
                                 image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                                currPixels.append([x,y,z])
 
                         else:
                             image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
@@ -423,4 +443,3 @@ with open(sys.argv[1], 'r') as filename:
                 
 image.save(pngName, "PNG")
 # ...
-
