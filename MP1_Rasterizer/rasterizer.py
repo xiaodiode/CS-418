@@ -300,19 +300,19 @@ with open(sys.argv[1], 'r') as filename:
                 b_rgba = []
                 c_rgba = []
 
-                # if hyp:
-                #     for i in range(3):
-                #         a_rgba += [colorsToDraw[0][i]/w]
-                #         b_rgba += [colorsToDraw[1][i]/w]
-                #         c_rgba += [colorsToDraw[2][i]/w]
-                #     a_rgba += [colorsToDraw[0][3]]
-                #     b_rgba += [colorsToDraw[1][3]]
-                #     c_rgba += [colorsToDraw[2][3]]
+                if hyp:
+                    for i in range(3):
+                        a_rgba += [colorsToDraw[0][i]/w]
+                        b_rgba += [colorsToDraw[1][i]/w]
+                        c_rgba += [colorsToDraw[2][i]/w]
+                    a_rgba += [colorsToDraw[0][3]]
+                    b_rgba += [colorsToDraw[1][3]]
+                    c_rgba += [colorsToDraw[2][3]]
 
-                # else:
-                a_rgba = colorsToDraw[0]
-                b_rgba = colorsToDraw[1]
-                c_rgba = colorsToDraw[2]
+                else:
+                    a_rgba = colorsToDraw[0]
+                    b_rgba = colorsToDraw[1]
+                    c_rgba = colorsToDraw[2]
 
 
                 print("new colorsToDraw: ", a_rgba, b_rgba, c_rgba)
@@ -326,13 +326,18 @@ with open(sys.argv[1], 'r') as filename:
                     w = pixel[3]
                     
                     for i in range(4,8):
-                        # if hyp:
-                        #     pixel[i] /= w # divide rgb by interpolated 1/w
+                        if hyp:
+                            pixel[i] /= w # divide rgb by interpolated 1/w
                         if sRGB:
-                            if(pixel[i] <= 0.0031308):
-                                pixel[i] *= 12.92
-                            else:
-                                pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
+                            if(pixel[i] <= 1 and pixel[i] >= 0):
+                                if(pixel[i] <= 0.0031308):
+                                    pixel[i] *= 12.92
+                                else:
+                                    pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
+                            if pixel[i] > 1:
+                                pixel[i] = 1
+                            elif pixel[i] < 0:
+                                pixel[i] = 0
       
                     
                     r = pixel[4]*255
