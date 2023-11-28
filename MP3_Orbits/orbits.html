@@ -235,26 +235,6 @@ function draw(seconds) {
         tr = m4trans(...lerp(t, [-1,0,1], [1,0,1]))
     }
 
-    // let m2 = m4mul(tr, m4scale(0.25, 0.25, 0.25))
-    // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m2))
-    // gl.drawElements(geom.mode, geom.count, geom.type, 0)
-
-    // let m3 = m4mul(m, m4trans(0,1,0), m4scale(0.5, 0.5, 0.5), m4rotZ(seconds))
-    // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m3))
-    // gl.drawElements(geom.mode, geom.count, geom.type, 0)
-
-    // let m4 = m4mul(m3, m4trans(1,0,0), m4scale(0.5, 0.5, 0.5))
-    // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m4))
-    // gl.drawElements(geom.mode, geom.count, geom.type, 0)
-
-    // // let m5 = m4mul(m, m4trans(0,0,1), m4scale(0.5, 0.5, 0.5), m4rotZ(seconds))
-    // // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m5))
-    // // gl.drawElements(geom.mode, geom.count, geom.type, 0)
-
-    // let m6 = m4mul(tr, m4scale(0.25, 0.25, 0.25))
-    // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m6))
-    // gl.drawElements(geom.mode, geom.count, geom.type, 0)
-
     gl.bindVertexArray(geom2.vao)
 
     let m_sun = m4rotY(seconds*2)
@@ -263,23 +243,31 @@ function draw(seconds) {
     gl.uniformMatrix4fv(program.uniforms.p, false, p)
     gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
 
-    let m_earth = m4mul(m4rotY(seconds), m4trans(-1.5,0,0), m4scale(0.5, 0.5, 0.5), m4rotY(seconds*4))
+    let dist_earth = -2.5
+    let orbit_earth = seconds
+    let spin_earth = seconds*6
+
+    let dist_mars = dist_earth*1.6
+    let orbit_mars = seconds/1.9
+    let spin_mars = spin_earth/2.2
+
+    let m_earth = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4scale(0.5, 0.5, 0.5), m4rotY(spin_earth))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_earth))
     gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
 
-    let m_mars = m4mul(m4rotY(seconds/1.9), m4trans(-1.5*1.6,0,0), m4scale(0.3, 0.3, 0.3), m4rotY(seconds*4/2.2))
+    let m_mars = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4scale(0.3, 0.3, 0.3), m4rotY(spin_mars))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_mars))
     gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
 
-    let m_moon = m4mul(m_earth, m4trans(-1.5,0,0), m4scale(0.4, 0.4, 0.4))
+    let m_moon = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4rotY(orbit_earth*2), m4trans(-1,0,0), m4scale(0.2, 0.2, 0.2))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_moon))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
-    let m_phobos = m4mul(m_mars, m4trans(-1.5,0,0), m4scale(0.4, 0.4, 0.4))
+    let m_phobos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(spin_mars*3), m4trans(-0.5,0,0), m4scale(0.2, 0.2, 0.2))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_phobos))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
-    let m_deimos = m4mul(m_mars, m4trans(-1.5*2,0,0), m4scale(0.2, 0.2, 0.2))
+    let m_deimos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_mars*1.2), m4trans(-0.5*2,0,0), m4scale(0.1, 0.1, 0.1))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_deimos))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
