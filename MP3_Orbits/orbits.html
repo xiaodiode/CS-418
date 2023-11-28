@@ -150,6 +150,12 @@ function setupGeomery(geom) {
 
 <!-- All the other code in one big script element. -->
 <script>
+
+/**
+ * Describes the positions, colors, and orders in which the triangles 
+ * are drawn for the following 3d shapes: tetrahedron and octahedron
+ */
+
 var tetrahedron =
     {"triangles":
         [0,1,2
@@ -214,12 +220,6 @@ function draw(seconds) {
     gl.bindVertexArray(geom.vao)
 
     gl.uniform4fv(program.uniforms.color, IlliniOrange)
-    // let m = m4rotX(seconds)
-    // let v = m4view([1,5,3], [0,0,0], [0,1,0])
-    // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m))
-    // gl.uniformMatrix4fv(program.uniforms.p, false, p)
-    
-    // gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
     let wrapped = seconds % 4
     let stage = Math.floor(wrapped)
@@ -237,20 +237,37 @@ function draw(seconds) {
 
     gl.bindVertexArray(geom2.vao)
 
-    let m_sun = m4rotY(seconds*2)
-    let v_sun = m4view([1,0,5], [0,0,0], [0,1,0])
+    /* Earth constants */ 
+    let dist_earth = -2.5               // Earth's distance from sun
+    let orbit_earth = seconds           // Earth orbits Sun once every few seconds
+    let spin_earth = seconds*10          // Earth spins several times a second
+
+    /* Mars constants: All constants are dependent on Earth's */
+    let dist_mars = dist_earth*1.6      // Mars is 1.6 times as far from Sun as Earth
+    let orbit_mars = orbit_earth/1.9    // Mars orbits Sun 1.9 times slower than Earth
+    let spin_mars = spin_earth/2.2      // Mars spins 2.2 times slower than Earth
+
+    /* Moon constants: Orbits Earth */
+    let dist_moon = -1                  // Moon's distance from Earth
+    let orbit_moon = seconds*4          // Moon orbit rate > Earth orbits Sun AND < Earth spins
+
+    /* Phobos constants: Orbits Mars */
+    let dist_phobos = -0.5              // Phobos's distance from Mars
+    let orbit_phobos = spin_mars*3      // Phobos orbits several times faster than Mars spins
+
+    /* Deimos constants: Orbits Mars */
+    let dist_deimos = dist_phobos*2     // Deimos is twice as far from Mars as Phobos
+    let orbit_deimos = spin_mars*1.2    // Deimos orbits Mars only a little faster than Mars spins
+
+    /* Draws the Sun as an octahedron and sets viewport parameters based on Sun*/
+    let m_sun = m4rotY(seconds*4)       // Sun spins full rotation once every 2 seconds
+    let v_sun = m4view([1,0,5], [0,0,0], [0,1,0])   
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_sun))
     gl.uniformMatrix4fv(program.uniforms.p, false, p)
     gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
 
-    let dist_earth = -2.5
-    let orbit_earth = seconds
-    let spin_earth = seconds*6
-
-    let dist_mars = dist_earth*1.6
-    let orbit_mars = seconds/1.9
-    let spin_mars = spin_earth/2.2
-
+    /** Draws Earth and Mars as octahedrons orbiting the center (Sun)
+     * with movements based on constants and descriptions detailed above */
     let m_earth = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4scale(0.5, 0.5, 0.5), m4rotY(spin_earth))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_earth))
     gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
@@ -259,15 +276,19 @@ function draw(seconds) {
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_mars))
     gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
 
-    let m_moon = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4rotY(orbit_earth*2), m4trans(-1,0,0), m4scale(0.2, 0.2, 0.2))
+    /** Draws Moon as tetrahedron orbiting Earth with movements based on
+     * constants and descriptions detailed above*/
+    let m_moon = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4rotY(orbit_moon), m4trans(dist_moon,0,0), m4scale(0.2, 0.2, 0.2))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_moon))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
-    let m_phobos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(spin_mars*3), m4trans(-0.5,0,0), m4scale(0.2, 0.2, 0.2))
+    /** Draws Phobos and Deimos as tetrahedrons orbiting Mars with movements
+     *  based on constants and descriptions detailed above*/
+    let m_phobos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_phobos), m4trans(dist_phobos,0,0), m4scale(0.2, 0.2, 0.2))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_phobos))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
-    let m_deimos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_mars*1.2), m4trans(-0.5*2,0,0), m4scale(0.1, 0.1, 0.1))
+    let m_deimos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_deimos), m4trans(dist_deimos,0,0), m4scale(0.1, 0.1, 0.1))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_deimos))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
@@ -307,6 +328,9 @@ window.addEventListener('load', async (event) => {
     let fs = document.querySelector('#frag').textContent.trim()
     window.program = compileShader(vs,fs)
     gl.enable(gl.DEPTH_TEST)
+
+    /** Ensures that anything drawn using 'geom' draws tetrahedrons,
+     * while those using 'geom2' draws octahedrons.*/
     window.geom = setupGeomery(tetrahedron)
     window.geom2 = setupGeomery(octahedron)
     
