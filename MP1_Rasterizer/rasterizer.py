@@ -272,15 +272,13 @@ with open(sys.argv[1], 'r') as filename:
             positionsToDraw = []
             colorsToDraw = []
             
-            
-
             for i in range(0, count, 3):
                 positionsToDraw = [positions[first + i], positions[first + i + 1], positions[first + i + 2]]
                 colorsToDraw = [colors[first + i], colors[first + i + 1], colors[first + i + 2]]
 
                 pointsToDraw = []
                 pixelsToDraw = []
-                
+
                 for j in range(3):
                     x = positionsToDraw[j][0]
                     y = positionsToDraw[j][1]
@@ -380,61 +378,84 @@ with open(sys.argv[1], 'r') as filename:
             offset = int(line.split()[2])
 
             positionsToDraw = []
-
             colorsToDraw = []
-            
-            pixelsToDraw = []
 
             for i in range(0, count, 3):
                 positionsToDraw = [positions[elements[offset + i]], positions[elements[offset + i + 1]], positions[elements[offset + i + 2]]]
                 colorsToDraw = [colors[elements[offset + i]], colors[elements[offset + i + 1]], colors[elements[offset + i + 2]]]
 
                 pointsToDraw = []
-            
+                pixelsToDraw = []
+
                 for j in range(3):
                     x = positionsToDraw[j][0]
                     y = positionsToDraw[j][1]
                     z = positionsToDraw[j][2]
                     w = positionsToDraw[j][3]
 
-                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z])
+                    pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z/w, 1/w])
 
                 print("positionsToDraw: ", positionsToDraw)
                 print("pointsToDraw: ", pointsToDraw)
-                print("colorsToDraw: ", colorsToDraw)
+                print("colorsToDraw: ", colorsToDraw, " original w: ", w)
 
                 a = pointsToDraw[0]
                 b = pointsToDraw[1]
                 c = pointsToDraw[2]
 
-                a_rgba = colorsToDraw[0]
-                b_rgba = colorsToDraw[1]
-                c_rgba = colorsToDraw[2]
+                a_rgba = []
+                b_rgba = []
+                c_rgba = []
+
+                if hyp:
+                    for i in range(3): # divides each point's rgb value by its respective w
+                        a_rgba += [colorsToDraw[0][i]/(1/a[3])] 
+                        b_rgba += [colorsToDraw[1][i]/(1/b[3])]
+                        c_rgba += [colorsToDraw[2][i]/(1/c[3])]
+                    a_rgba += [colorsToDraw[0][3]]
+                    b_rgba += [colorsToDraw[1][3]]
+                    c_rgba += [colorsToDraw[2][3]]
+
+                else:
+                    a_rgba = colorsToDraw[0]
+                    b_rgba = colorsToDraw[1]
+                    c_rgba = colorsToDraw[2]
+
+
+                # print("new colorsToDraw: ", a_rgba, b_rgba, c_rgba)
 
                 pixelsToDraw += scanline_algo(a, b, c, a_rgba, b_rgba, c_rgba)
-                
-                currPixels = []
+
+                # currPixels = []
 
                 for pixel in pixelsToDraw:
-                    print("original pixel[3]: ", pixel[3])
-                    if sRGB:
-                        for i in range(3,7):
-                            if(pixel[i] <= 0.0031308):
-                                pixel[i] *= 12.92
-                            else:
-                                pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
-                            if i == 3:
-                                print("changed pixel[3]: ", pixel[3])
-                    print("original pixel[3]: ", pixel[3])
                     x = pixel[0]
                     y = pixel[1]
                     z = pixel[2]
-                    r = pixel[3]*255
-                    g = pixel[4]*255
-                    b = pixel[5]*255
-                    a = pixel[6]*255
+                    w = pixel[3]
+                    # print("new w: ", w)
+                    # print("rgb without w division: ", pixel[4:8])
+                    for i in range(4,8):
+                        if hyp:
+                            pixel[i] /= w # divide rgb by interpolated 1/w
+                            
+                        if sRGB:
+                            if(pixel[i] <= 1 and pixel[i] >= 0):
+                                if(pixel[i] <= 0.0031308):
+                                    pixel[i] *= 12.92
+                                else:
+                                    pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
+                            if pixel[i] > 1:
+                                pixel[i] = 1
+                            elif pixel[i] < 0:
+                                pixel[i] = 0
+                    print("new color rgb: ", pixel[4:7])
                     
-                    # print("x,y,z: ", x,y,z)
+                    r = pixel[4]*255
+                    g = pixel[5]*255
+                    b = pixel[6]*255
+                    a = pixel[7]*255
+                    
                     
                     if(-width < x < width and -height < y < height):
                         if depth:
@@ -442,15 +463,15 @@ with open(sys.argv[1], 'r') as filename:
                             # print("existingPos: ", existingPos)
                         if(existingPos):
                             if(existingPos[0][2] > z):
+                                currPixels.remove(existingPos[0])
                                 image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                                currPixels.append([x,y,z])
 
                         else:
                             image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                            # print("put down pixel xyrgba: ", x,y,r,g,b,a)
                             currPixels.append([x,y,z])
 
-            
-        
-         
                 
 image.save(pngName, "PNG")
 # ...
