@@ -435,7 +435,7 @@ with open(sys.argv[1], 'r') as filename:
                     w = pixel[3]
                     # print("new w: ", w)
                     # print("rgb without w division: ", pixel[4:8])
-                    for i in range(4,8):
+                    for i in range(4,7):
                         if hyp:
                             pixel[i] /= w # divide rgb by interpolated 1/w
                             
@@ -449,28 +449,42 @@ with open(sys.argv[1], 'r') as filename:
                                 pixel[i] = 1
                             elif pixel[i] < 0:
                                 pixel[i] = 0
-                    print("new color rgb: ", pixel[4:7])
+                    # print("new color rgb: ", pixel[4:7])
                     
                     r = pixel[4]*255
                     g = pixel[5]*255
                     b = pixel[6]*255
                     a = pixel[7]*255
                     
+                    currPixels.append([x,y,z,w,r,g,b,a])
+        # else:     
+        print("old currPixels: ", currPixels)
+        currPixels = sorted(currPixels, key=lambda x: x[2], reverse=True)
+        
+        for pixel in currPixels:   
+            x = pixel[0]
+            y = pixel[1]
+            z = pixel[2]
+            w = pixel[3]
+            r = pixel[4]
+            g = pixel[5]
+            b = pixel[6]
+            a = pixel[7]
+            if(-width < x < width and -height < y < height):
+                # if depth:
+                #     existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
+                #     # print("existingPos: ", existingPos)
+                # if(existingPos):
                     
-                    if(-width < x < width and -height < y < height):
-                        if depth:
-                            existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
-                            # print("existingPos: ", existingPos)
-                        if(existingPos):
-                            if(existingPos[0][2] > z):
-                                currPixels.remove(existingPos[0])
-                                image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
-                                currPixels.append([x,y,z])
+                #     if(existingPos[0][2] > z):
+                #         currPixels.remove(existingPos[0])
+                #         image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                #         currPixels.append([x,y,z])
 
-                        else:
-                            image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
-                            # print("put down pixel xyrgba: ", x,y,r,g,b,a)
-                            currPixels.append([x,y,z])
+                # else:
+                image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                    # print("put down pixel xyrgba: ", x,y,r,g,b,a)
+                    # currPixels.append([x,y,z,r,g,b,a])
 
                 
 image.save(pngName, "PNG")

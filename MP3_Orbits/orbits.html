@@ -217,9 +217,6 @@ function draw(seconds) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
     gl.useProgram(program)
 
-    gl.bindVertexArray(geom.vao)
-    gl.bindVertexArray(geom2.vao)
-
     gl.uniform4fv(program.uniforms.color, IlliniOrange)
 
     let wrapped = seconds % 4
@@ -258,6 +255,8 @@ function draw(seconds) {
     let dist_deimos = dist_phobos*2     // Deimos is twice as far from Mars as Phobos
     let orbit_deimos = spin_mars*1.2    // Deimos orbits Mars only a little faster than Mars spins
 
+    gl.bindVertexArray(geom2.vao)
+
     /* Draws the Sun as an octahedron and sets viewport parameters based on Sun*/
     let m_sun = m4rotY(seconds*4)       // Sun spins full rotation once every 2 seconds
     let v_sun = m4view([1,0,5], [0,0,0], [0,1,0])   
@@ -275,15 +274,16 @@ function draw(seconds) {
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_mars))
     gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
 
+    gl.bindVertexArray(geom.vao)
     /** Draws Moon as tetrahedron orbiting Earth with movements based on
      * constants and descriptions detailed above*/
-    let m_moon = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4rotY(orbit_moon), m4trans(dist_moon,0,0), m4scale(0.2, 0.2, 0.2))
+    let m_moon = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4rotY(orbit_moon), m4trans(dist_moon,0,0), m4scale(0.15, 0.15, 0.15))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_moon))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
     /** Draws Phobos and Deimos as tetrahedrons orbiting Mars with movements
      *  based on constants and descriptions detailed above*/
-    let m_phobos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_phobos), m4trans(dist_phobos,0,0), m4scale(0.2, 0.2, 0.2))
+    let m_phobos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_phobos), m4trans(dist_phobos,0,0), m4scale(0.15, 0.15, 0.15))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_phobos))
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 

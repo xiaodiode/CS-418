@@ -1,4 +1,4 @@
 elements
 depth
-sRGB
-hyp
+gamma
+hyperbolic
