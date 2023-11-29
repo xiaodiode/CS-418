@@ -79,7 +79,7 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
         else:
             p += [a_rgba[i-4] + o[i]]
 
-    # print("p: ",p)
+    print("p: ",p)
     return p
 
 def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
@@ -272,14 +272,15 @@ with open(sys.argv[1], 'r') as filename:
             positionsToDraw = []
             colorsToDraw = []
             
-            pixelsToDraw = []
+            
 
             for i in range(0, count, 3):
                 positionsToDraw = [positions[first + i], positions[first + i + 1], positions[first + i + 2]]
                 colorsToDraw = [colors[first + i], colors[first + i + 1], colors[first + i + 2]]
 
                 pointsToDraw = []
-            
+                pixelsToDraw = []
+                
                 for j in range(3):
                     x = positionsToDraw[j][0]
                     y = positionsToDraw[j][1]
@@ -319,13 +320,15 @@ with open(sys.argv[1], 'r') as filename:
 
                 pixelsToDraw += scanline_algo(a, b, c, a_rgba, b_rgba, c_rgba)
 
+                # currPixels = []
+
                 for pixel in pixelsToDraw:
                     x = pixel[0]
                     y = pixel[1]
                     z = pixel[2]
                     w = pixel[3]
                     # print("new w: ", w)
-                    # print("rgb without w division: ", pixel[4:8])
+                    print("rgb without w division: ", pixel[4:8])
                     for i in range(4,8):
                         if hyp:
                             pixel[i] /= w # divide rgb by interpolated 1/w
@@ -340,7 +343,7 @@ with open(sys.argv[1], 'r') as filename:
                                 pixel[i] = 1
                             elif pixel[i] < 0:
                                 pixel[i] = 0
-                    # print("new color rgb: ", pixel[4:7])
+                    print("new color rgb: ", pixel[4:7])
                     
                     r = pixel[4]*255
                     g = pixel[5]*255
@@ -360,6 +363,7 @@ with open(sys.argv[1], 'r') as filename:
 
                         else:
                             image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
+                            print("put down pixel xyrgba: ", x,y,r,g,b,a)
                             currPixels.append([x,y,z])
                         
                 # print("pixelsToDraw: ", pixelsToDraw)
