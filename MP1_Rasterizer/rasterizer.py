@@ -79,7 +79,7 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
         else:
             p += [a_rgba[i-4] + o[i]]
 
-    print("p: ",p)
+    # print("p: ",p)
     return p
 
 def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
@@ -290,7 +290,7 @@ with open(sys.argv[1], 'r') as filename:
 
                 print("positionsToDraw: ", positionsToDraw)
                 print("pointsToDraw: ", pointsToDraw)
-                print("colorsToDraw: ", colorsToDraw)
+                print("colorsToDraw: ", colorsToDraw, " original w: ", w)
 
                 a = pointsToDraw[0]
                 b = pointsToDraw[1]
@@ -301,10 +301,10 @@ with open(sys.argv[1], 'r') as filename:
                 c_rgba = []
 
                 if hyp:
-                    for i in range(3):
-                        a_rgba += [colorsToDraw[0][i]/w]
-                        b_rgba += [colorsToDraw[1][i]/w]
-                        c_rgba += [colorsToDraw[2][i]/w]
+                    for i in range(3): # divides each point's rgb value by its respective w
+                        a_rgba += [colorsToDraw[0][i]/(1/a[3])] 
+                        b_rgba += [colorsToDraw[1][i]/(1/b[3])]
+                        c_rgba += [colorsToDraw[2][i]/(1/c[3])]
                     a_rgba += [colorsToDraw[0][3]]
                     b_rgba += [colorsToDraw[1][3]]
                     c_rgba += [colorsToDraw[2][3]]
@@ -324,10 +324,12 @@ with open(sys.argv[1], 'r') as filename:
                     y = pixel[1]
                     z = pixel[2]
                     w = pixel[3]
-                    
+                    # print("new w: ", w)
+                    # print("rgb without w division: ", pixel[4:8])
                     for i in range(4,8):
                         if hyp:
                             pixel[i] /= w # divide rgb by interpolated 1/w
+                            
                         if sRGB:
                             if(pixel[i] <= 1 and pixel[i] >= 0):
                                 if(pixel[i] <= 0.0031308):
@@ -338,7 +340,7 @@ with open(sys.argv[1], 'r') as filename:
                                 pixel[i] = 1
                             elif pixel[i] < 0:
                                 pixel[i] = 0
-      
+                    # print("new color rgb: ", pixel[4:7])
                     
                     r = pixel[4]*255
                     g = pixel[5]*255

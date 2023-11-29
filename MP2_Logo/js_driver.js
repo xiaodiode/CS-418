@@ -1,3 +1,11 @@
+/**
+ * Compiles the vertex and fragment shaders, which are then
+ * attached to a program and linked to be returned
+ * 
+ * @param {*} vs_source The source code for vertex shader
+ * @param {*} fs_source The source code for fragment shader
+ * @returns The program linked with the vs and fs shaders
+ */
 function compileShader(vs_source, fs_source) {
     const vs = gl.createShader(gl.VERTEX_SHADER)
     gl.shaderSource(vs, vs_source)
@@ -36,6 +44,16 @@ function compileShader(vs_source, fs_source) {
     return program
 }
 
+/**
+ * 
+ * @param {*} geom Contains data for "triangles" (lists the vertices of each triangle)
+ *                  and "attributes" (lists the positions of each vertex and respective color)
+ * @returns an object with four keys:
+ *  - mode = the 1st argument for gl.drawElements
+ *  - count = the 2nd argument for gl.drawElements
+ *  - type = the 3rd argument for gl.drawElements
+ *  - vao = the vertex array object for use with gl.bindVertexArray
+ */
 function setupGeomery(geom) {
     var triangleArray = gl.createVertexArray()
     gl.bindVertexArray(triangleArray)
@@ -62,7 +80,10 @@ function setupGeomery(geom) {
         vao: triangleArray
     }
 }
-
+/**
+ * Draws one frame
+ * @param {*} milliseconds 
+ */
 function draw(milliseconds) {
     gl.clear(gl.COLOR_BUFFER_BIT) 
     gl.useProgram(program)
@@ -74,6 +95,10 @@ function draw(milliseconds) {
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 }
 
+/**
+ * Calls the draw function to draw elements each frame
+ * @param {*} milliseconds 
+ */
 function tick(milliseconds) {
     draw(milliseconds)
     requestAnimationFrame(tick) // asks browser to call tick before next frame

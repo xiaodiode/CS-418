@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Single-file Example</title>
+    <title>Gloria's Orbits MP</title>
     <!-- part of a multi-part demonstration: see cs418.cs.illinois.edu -->
     <script src="wrapWebGL2.js"></script>
     <script src="math.js"></script>
@@ -218,6 +218,7 @@ function draw(seconds) {
     gl.useProgram(program)
 
     gl.bindVertexArray(geom.vao)
+    gl.bindVertexArray(geom2.vao)
 
     gl.uniform4fv(program.uniforms.color, IlliniOrange)
 
@@ -234,8 +235,6 @@ function draw(seconds) {
     else { // stage == 3
         tr = m4trans(...lerp(t, [-1,0,1], [1,0,1]))
     }
-
-    gl.bindVertexArray(geom2.vao)
 
     /* Earth constants */ 
     let dist_earth = -2.5               // Earth's distance from sun
