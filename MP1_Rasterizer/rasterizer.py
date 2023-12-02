@@ -324,6 +324,21 @@ with open(sys.argv[1], 'r') as filename:
                     z = positionsToDraw[j][2]
                     w = positionsToDraw[j][3]
 
+                    # print("old xyzw: ", x,y,z,w)
+                    
+                    posMatrix = [[x],[y],[z],[w]]
+                    productMatrix = []
+        
+                    if uniform:
+                        productMatrix = matrix_multiply(uniformMatrix, posMatrix)
+                        x = productMatrix[0][0]
+                        y = productMatrix[1][0]
+                        z = productMatrix[2][0]
+                        w = productMatrix[3][0]
+                            
+                        # print("new xyzw: ", x,y,z,w)
+
+
                     pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z/w, 1/w])
 
                 print("positionsToDraw: ", positionsToDraw)
@@ -432,6 +447,20 @@ with open(sys.argv[1], 'r') as filename:
                     z = positionsToDraw[j][2]
                     w = positionsToDraw[j][3]
 
+                    # print("old xyzw: ", x,y,z,w)
+                    
+                    posMatrix = [[x],[y],[z],[w]]
+                    productMatrix = []
+        
+                    if uniform:
+                        productMatrix = matrix_multiply(uniformMatrix, posMatrix)
+                        x = productMatrix[0][0]
+                        y = productMatrix[1][0]
+                        z = productMatrix[2][0]
+                        w = productMatrix[3][0]
+                            
+                        # print("new xyzw: ", x,y,z,w)
+
                     pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z/w, 1/w])
 
                 print("positionsToDraw: ", positionsToDraw)
@@ -495,14 +524,6 @@ with open(sys.argv[1], 'r') as filename:
                     b = pixel[6]*255
                     a = pixel[7]*255
                     
-                    posMatrix = [[x],[y],[z],[w]]
-                    productMatrix = []
-        
-                    if uniform:
-                        productMatrix = matrix_multiply(uniformMatrix, posMatrix)
-                    
-                    print("productMatrix: ", productMatrix)
-                    
                     if(-width < x < width and -height < y < height):
                         if depth:
                             existingPos = [pix for pix in currPixels if pix[:2] == [x,y]]
@@ -517,6 +538,8 @@ with open(sys.argv[1], 'r') as filename:
                             image.putpixel((int(x),int(y)), (int(r),int(g),int(b),int(a)))
                             # print("put down pixel xyrgba: ", x,y,r,g,b,a)
                             currPixels.append([x,y,z])
+                        
+                # print("pixelsToDraw: ", pixelsToDraw)
 
             
         
