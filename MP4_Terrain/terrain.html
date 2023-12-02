@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Gloria's Terrain MP</title>
+    <!-- part of a multi-part demonstration: see cs418.cs.illinois.edu -->
+    <script src="wrapWebGL2.js"></script>
+    <script src="math.js"></script>
+
+
+<!-- The source code of a vertex shader directly in the HTML. The 'type=' command can have any value except "javascript" and just tells the browser not to try to run the code as javascript. -->
+<script id="vert" type="glsl">
+#version 300 es
+layout(location=0) in vec4 position;
+layout(location=1) in vec4 color;
+out vec4 color2;
+uniform mat4 mv;
+uniform mat4 p;
+void main() {
+    gl_Position = p * mv * position;
+    color2 = color;
+}
+</script>
+
+
+<!-- The source code of a fragment shader. -->
+<script id="frag" type="glsl">
+#version 300 es
+precision highp float;
+uniform vec4 color;
+out vec4 fragColor;
+in vec4 color2;
+void main() {
+    fragColor = color2;
+}
+</script>
+
+
+<!-- Code I don't expect to change. -->
+<script>
+const IlliniBlue = new Float32Array([0.075, 0.16, 0.292, 1])
+const IlliniOrange = new Float32Array([1, 0.373, 0.02, 1])
+const IdentityMatrix = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1])
+
+/**
+ * Given the source code of a vertex and fragment shader, compiles them,
+ * and returns the linked program.
+ */
+function compileShader(vs_source, fs_source) {
+    const vs = gl.createShader(gl.VERTEX_SHADER)
+    gl.shaderSource(vs, vs_source)
+    gl.compileShader(vs)
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(vs))
+        throw Error("Vertex shader compilation failed")
+    }
+
+    const fs = gl.createShader(gl.FRAGMENT_SHADER)
+    gl.shaderSource(fs, fs_source)
+    gl.compileShader(fs)
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(fs))
+        throw Error("Fragment shader compilation failed")
+    }
+
+    const program = gl.createProgram()
+    gl.attachShader(program, vs)
+    gl.attachShader(program, fs)
+    gl.linkProgram(program)
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(program))
+        throw Error("Linking failed")
+    }
+    
+    const uniforms = {}
+    for(let i=0; i<gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS); i+=1) {
+        let info = gl.getActiveUniform(program, i)
+        uniforms[info.name] = gl.getUniformLocation(program, info.name)
+    }
+    program.uniforms = uniforms
+
+    return program
+}
+
+/**
+ * Sends per-vertex data to the GPU and connects it to a VS input
+ * 
+ * @param data    a 2D array of per-vertex data (e.g. [[x,y,z,w],[x,y,z,w],...])
+ * @param loc     the layout location of the vertex shader's `in` attribute
+ * @param mode    (optional) gl.STATIC_DRAW, gl.DYNAMIC_DRAW, etc
+ * 
+ * @returns the ID of the buffer in GPU memory; useful for changing data later
+ */
+function supplyDataBuffer(data, loc, mode) {
+    if (mode === undefined) mode = gl.STATIC_DRAW
+    
+    const buf = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+    const f32 = new Float32Array(data.flat())
+    gl.bufferData(gl.ARRAY_BUFFER, f32, mode)
+    
+    gl.vertexAttribPointer(loc, data[0].length, gl.FLOAT, false, 0, 0)
+    gl.enableVertexAttribArray(loc)
+    
+    return buf;
+}
+
+/**
+ * Creates a Vertex Array Object and puts into it all of the data in the given
+ * JSON structure, which should have the following form:
+ * 
+ * ````
+ * {"triangles": a list of of indices of vertices
+ * ,"attributes":
+ *  [ a list of 1-, 2-, 3-, or 4-vectors, one per vertex to go in location 0
+ *  , a list of 1-, 2-, 3-, or 4-vectors, one per vertex to go in location 1
+ *  , ...
+ *  ]
+ * }
+ * ````
+ * 
+ * @returns an object with four keys:
+ *  - mode = the 1st argument for gl.drawElements
+ *  - count = the 2nd argument for gl.drawElements
+ *  - type = the 3rd argument for gl.drawElements
+ *  - vao = the vertex array object for use with gl.bindVertexArray
+ */
+function setupGeomery(geom) {
+    var triangleArray = gl.createVertexArray()
+    gl.bindVertexArray(triangleArray)
+
+    for(let i=0; i<geom.attributes.length; i+=1) {
+        let data = geom.attributes[i]
+        supplyDataBuffer(data, i)
+    }
+
+    var indices = new Uint16Array(geom.triangles.flat())
+    var indexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW)
+
+    return {
+        mode: gl.TRIANGLES,
+        count: indices.length,
+        type: gl.UNSIGNED_SHORT,
+        vao: triangleArray
+    }
+}
+</script>
+
+<!-- All the other code in one big script element. -->
+<script>
+
+/**
+ * Describes the positions, colors, and orders in which the triangles 
+ * are drawn for the following 3d shapes: tetrahedron and octahedron
+ */
+
+var tetrahedron =
+    {"triangles":
+        [0,1,2
+        ,0,2,3
+        ,0,3,1
+        ,1,2,3
+        ]
+    ,"attributes":
+        [ // position
+            [[ 1, 1, 1]
+            ,[ -1, -1, 1]
+            ,[ -1, 1, -1]
+            ,[ 1, -1, -1]
+            ]
+        , // color
+            [[1,1,1]
+            ,[0,0,1]
+            ,[0,1,0]
+            ,[1,0,0]
+            ]
+        ]
+    }
+
+var octahedron =
+    {"triangles":
+        [0,1,2
+        ,0,2,3
+        ,0,3,4
+        ,0,4,1,
+        ,5,1,4
+        ,5,4,3
+        ,5,3,2
+        ,5,2,1
+        ]
+    ,"attributes":
+        [ // position
+            [[ 1, 0, 0]
+            ,[ 0, 1, 0]
+            ,[ 0, 0, 1]
+            ,[ 0, -1, 0]
+            ,[ 0, 0, -1]
+            ,[ -1, 0, 0]
+            ]
+        , // color
+            [[1,0.5,0.5]
+            ,[0.5,1,0.5]
+            ,[0.5,0.5,1]
+            ,[0.5,0,0.5]
+            ,[0.5,0.5,0]
+            ,[0,0.5,0.5]
+            ]
+        ]
+    }
+
+
+/** Draw one frame */
+function draw(seconds) {
+    gl.clearColor(...IlliniBlue) // f(...[1,2,3]) means f(1,2,3)
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+    gl.useProgram(program)
+
+    gl.uniform4fv(program.uniforms.color, IlliniOrange)
+
+    let wrapped = seconds % 4
+    let stage = Math.floor(wrapped)
+    let t = wrapped - stage
+    if (stage == 0) {
+        tr = m4trans(1,0,1*(1-t) + -1*(t))
+    } else if (stage == 1) { 
+        tr = m4trans(...lerp(t, [1,0,-1], [-1,0,-1]))
+    } else if (stage == 2) { 
+        tr = m4trans(...lerp(t, [-1,0,-1], [-1,0,1]))
+    } 
+    else { // stage == 3
+        tr = m4trans(...lerp(t, [-1,0,1], [1,0,1]))
+    }
+
+    /* Earth constants */ 
+    let dist_earth = -2.5               // Earth's distance from sun
+    let orbit_earth = seconds           // Earth orbits Sun once every few seconds
+    let spin_earth = seconds*10          // Earth spins several times a second
+
+    /* Mars constants: All constants are dependent on Earth's */
+    let dist_mars = dist_earth*1.6      // Mars is 1.6 times as far from Sun as Earth
+    let orbit_mars = orbit_earth/1.9    // Mars orbits Sun 1.9 times slower than Earth
+    let spin_mars = spin_earth/2.2      // Mars spins 2.2 times slower than Earth
+
+    /* Moon constants: Orbits Earth */
+    let dist_moon = -1                  // Moon's distance from Earth
+    let orbit_moon = seconds*4          // Moon orbit rate > Earth orbits Sun AND < Earth spins
+
+    /* Phobos constants: Orbits Mars */
+    let dist_phobos = -0.5              // Phobos's distance from Mars
+    let orbit_phobos = spin_mars*3      // Phobos orbits several times faster than Mars spins
+
+    /* Deimos constants: Orbits Mars */
+    let dist_deimos = dist_phobos*2     // Deimos is twice as far from Mars as Phobos
+    let orbit_deimos = spin_mars*1.2    // Deimos orbits Mars only a little faster than Mars spins
+
+    gl.bindVertexArray(geom2.vao)
+
+    /* Draws the Sun as an octahedron and sets viewport parameters based on Sun*/
+    let m_sun = m4rotY(seconds*4)       // Sun spins full rotation once every 2 seconds
+    let v_sun = m4view([1,0,5], [0,0,0], [0,1,0])   
+    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_sun))
+    gl.uniformMatrix4fv(program.uniforms.p, false, p)
+    gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
+
+    /** Draws Earth and Mars as octahedrons orbiting the center (Sun)
+     * with movements based on constants and descriptions detailed above */
+    let m_earth = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4scale(0.5, 0.5, 0.5), m4rotY(spin_earth))
+    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_earth))
+    gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
+
+    let m_mars = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4scale(0.3, 0.3, 0.3), m4rotY(spin_mars))
+    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_mars))
+    gl.drawElements(geom2.mode, geom2.count, geom2.type, 0)
+
+    gl.bindVertexArray(geom.vao)
+    /** Draws Moon as tetrahedron orbiting Earth with movements based on
+     * constants and descriptions detailed above*/
+    let m_moon = m4mul(m4rotY(orbit_earth), m4trans(dist_earth,0,0), m4rotY(orbit_moon), m4trans(dist_moon,0,0), m4scale(0.15, 0.15, 0.15))
+    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_moon))
+    gl.drawElements(geom.mode, geom.count, geom.type, 0)
+
+    /** Draws Phobos and Deimos as tetrahedrons orbiting Mars with movements
+     *  based on constants and descriptions detailed above*/
+    let m_phobos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_phobos), m4trans(dist_phobos,0,0), m4scale(0.15, 0.15, 0.15))
+    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_phobos))
+    gl.drawElements(geom.mode, geom.count, geom.type, 0)
+
+    let m_deimos = m4mul(m4rotY(orbit_mars), m4trans(dist_mars,0,0), m4rotY(orbit_deimos), m4trans(dist_deimos,0,0), m4scale(0.1, 0.1, 0.1))
+    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v_sun,m_deimos))
+    gl.drawElements(geom.mode, geom.count, geom.type, 0)
+
+}
+
+/** Compute any time-varying or animated aspects of the scene */
+function tick(milliseconds) {
+    let seconds = milliseconds / 1000;
+
+    draw(seconds)
+    requestAnimationFrame(tick)
+}
+
+/** Resizes the canvas to completely fill the screen */
+function fillScreen() {
+    let canvas = document.querySelector('canvas')
+    document.body.style.margin = '0'
+    canvas.style.width = '100vw'
+    canvas.style.height = '100vh'
+    canvas.width = canvas.clientWidth
+    canvas.height = canvas.clientHeight
+    canvas.style.width = ''
+    canvas.style.height = ''
+    if (window.gl) {
+        gl.viewport(0,0, canvas.width, canvas.height)
+        window.p = m4perspNegZ(0.1, 10, 1.5, canvas.width, canvas.height)
+    }
+}
+
+/** Compile, link, set up geometry */
+window.addEventListener('load', async (event) => {
+    window.gl = document.querySelector('canvas').getContext('webgl2',
+        // optional configuration object: see https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
+        {antialias: false, depth:true, preserveDrawingBuffer:true}
+    )
+    let vs = document.querySelector('#vert').textContent.trim()
+    let fs = document.querySelector('#frag').textContent.trim()
+    window.program = compileShader(vs,fs)
+    gl.enable(gl.DEPTH_TEST)
+
+    /** Ensures that anything drawn using 'geom' draws tetrahedrons,
+     * while those using 'geom2' draws octahedrons.*/
+    window.geom = setupGeomery(tetrahedron)
+    window.geom2 = setupGeomery(octahedron)
+    
+    fillScreen()
+    window.addEventListener('resize', fillScreen)
+    requestAnimationFrame(tick)
+})
+
+</script>
+<style>
+    body {
+        margin: 0; border: none; padding: 0;
+        display: flex; flex-direction: column;
+        width: 100%; height: 100vh;
+    }
+    .controls {
+        flex: 0 0 auto;
+    }
+    .controls > * { margin: 1em; }
+    .display {
+        flex-grow: 1;
+        line-height: 0rem;
+    }
+    </style>
+</head>
+<body>
+<form class="controls" action="javascript:void(0);">
+    <label>Grid size: <input id="gridsize" type="number" value="50"/></label>
+    <label>Faults: <input id="faults" type="number" value="50"/></label>
+    <input id="submit" type="submit" value="Regenerate Terrain"/>
+</form>
+<div class="display">
+    <canvas width="300" height="300"></canvas>
+</div>
+</body>
+</html>
