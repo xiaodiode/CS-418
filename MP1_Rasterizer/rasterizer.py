@@ -3,7 +3,7 @@ import sys
 import math
 import numpy as np
 
-def dda_setup(a, b, dimension, a_rgba, b_rgba):
+def dda_setup(a, b, dimension):
     if(dimension == "x"):
         d = 0 
     else:
@@ -20,19 +20,13 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
         a = b
         b = temp
 
-        temp = a_rgba
-        a_rgba = b_rgba
-        b_rgba = temp
         # print("a, b:", a,b)
 
     pointDiff = []
-    colorDiff = []
 
-    for i in range(4):
+    for i in range(8):
         pointDiff += [b[i] - a[i]]
 
-    for i in range(4):
-        colorDiff += [b_rgba[i] - a_rgba[i]]
 
 
     # print("colorDiff: ", colorDiff, " b_rgba: ", b_rgba, " a_rgba: ", a_rgba)
@@ -41,28 +35,22 @@ def dda_setup(a, b, dimension, a_rgba, b_rgba):
     for p_coord in pointDiff:
         s.append(p_coord/(b[d] - a[d])) # s is now ([] of 4)/dimensional diff
     
-    for c_coord in colorDiff:
-        s.append(c_coord/(b[d] - a[d]))
 
     # print("s: ", s)
 
-    return s # s should be [] of size 6
+    return s # s should be [] of size 8
 
-def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
+def dda_firstPoint(a, b, dimension):
     if(dimension == "x"):
         d = 0 
     else:
         d = 1
     
-    s = dda_setup(a, b, dimension, a_rgba, b_rgba)
+    s = dda_setup(a, b, dimension)
     if(a[d] > b[d]): # swap a and b
         temp = a
         a = b
         b = temp
-
-        temp = a_rgba
-        a_rgba = b_rgba
-        b_rgba = temp
     # print("s: ", s)
     
     o = []
@@ -73,20 +61,15 @@ def dda_firstPoint(a, b, dimension, a_rgba, b_rgba):
     # print("e: ", e)
     for i in range(8):
         o.append(s[i]*e) # o is of distance e and obtains the direction of s vector
-        
-        if(i < 4):
-            p += [a[i] + o[i]]
-
-        else:
-            p += [a_rgba[i-4] + o[i]]
+        p += [a[i] + o[i]]
 
     # print("p: ",p)
     return p
 
-def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
+def dda_allPoints(a, b, dimension):
     all_p = []
     # print("dimensions", dimension)
-    p = dda_firstPoint(a, b, dimension, a_rgba, b_rgba)
+    p = dda_firstPoint(a, b, dimension)
     
     # print("p: ", p)
 
@@ -95,15 +78,11 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
     else:
         d = 1
     
-    s = dda_setup(a, b, dimension, a_rgba, b_rgba)
+    s = dda_setup(a, b, dimension)
     if(a[d] > b[d]): # swap a and b
         temp = a
         a = b
         b = temp
-
-        temp = a_rgba
-        a_rgba = b_rgba
-        b_rgba = temp
 
     while p[d] < b[d]:
         all_p.append(p.copy())
@@ -114,12 +93,11 @@ def dda_allPoints(a, b, dimension, a_rgba, b_rgba):
     # print("all_p,dimension", all_p,dimension)
     return all_p
 
-def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
+def scanline_algo(x, y, z):
     t = None
     b = None
     m = None
     trianglePoints = [x, y, z]
-    rgbaPoints = [x_rgba, y_rgba, z_rgba]
     # print("triangle points: ", trianglePoints)
     y_points = [x[1], y[1], z[1]]
 
@@ -128,34 +106,31 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
     for i in range(3):
         if(min(y_points) == y_points[i] and t == None):
             t = trianglePoints[i]
-            t_rgba= rgbaPoints[i]
 
         elif(max(y_points) == y_points[i] and b == None):
             b = trianglePoints[i]
-            b_rgba = rgbaPoints[i]
 
         else:
             m = trianglePoints[i]
-            m_rgba = rgbaPoints[i]
 
     # print("t, b, m: ", t, b, m)
 
     # step 4
-    s_long = dda_setup(t, b, "y", t_rgba, b_rgba)   # setup for long edge
+    s_long = dda_setup(t, b, "y")   # setup for long edge
     if(s_long == []):
         return
-    p_long = dda_firstPoint(t, b, "y", t_rgba, b_rgba)
+    p_long = dda_firstPoint(t, b, "y")
     # print("p_long: ", p_long)
     
     # find points in top half of triangle
     # step 5
-    s = dda_setup(t, m, "y", t_rgba, m_rgba)
-    p = dda_firstPoint(t, m , "y", t_rgba, m_rgba)
+    s = dda_setup(t, m, "y")
+    p = dda_firstPoint(t, m , "y")
 
     # step 6
     points = []
     while p[1] < m[1]:
-        points += dda_allPoints(p[0:4], p_long[0:4], "x", p[4:], p_long[4:])
+        points += dda_allPoints(p, p_long, "x")
         # print("points: ", points)
         for i in range(8):
             p[i] += s[i]
@@ -163,12 +138,12 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 
     # find points in bottom half of triangle
     # step 7
-    s = dda_setup(m, b, "y", m_rgba, b_rgba)
-    p = dda_firstPoint(m, b, "y", m_rgba, b_rgba)
+    s = dda_setup(m, b, "y")
+    p = dda_firstPoint(m, b, "y")
 
     # step 8
     while p[1] < b[1]:
-        points += dda_allPoints(p[0:4], p_long[0:4], "x", p[4:], p_long[4:])
+        points += dda_allPoints(p, p_long, "x")
         
         for i in range(8):
             p[i] += s[i]
@@ -215,6 +190,7 @@ depth = False
 sRGB = False
 hyp = False
 uniform = False
+texture = False
 
 currPixels = []
 
@@ -259,6 +235,10 @@ with open(sys.argv[1], 'r') as filename:
                 uniformRow = []
 
             print("uniformMatrix: ", uniformMatrix)
+
+        elif line.find("texture") != -1:
+            texture = True
+            positions = []
 
         elif line.startswith("position"):
             positions = []
@@ -367,10 +347,13 @@ with open(sys.argv[1], 'r') as filename:
                     b_rgba = colorsToDraw[1]
                     c_rgba = colorsToDraw[2]
 
+                a += a_rgba
+                b += b_rgba
+                c += c_rgba
 
                 # print("new colorsToDraw: ", a_rgba, b_rgba, c_rgba)
 
-                pixelsToDraw += scanline_algo(a, b, c, a_rgba, b_rgba, c_rgba)
+                pixelsToDraw += scanline_algo(a, b, c)
 
                 # currPixels = []
 
@@ -489,10 +472,13 @@ with open(sys.argv[1], 'r') as filename:
                     b_rgba = colorsToDraw[1]
                     c_rgba = colorsToDraw[2]
 
+                a += a_rgba
+                b += b_rgba
+                c += c_rgba
 
-                print("new colorsToDraw: ", a_rgba, b_rgba, c_rgba)
+                # print("new colorsToDraw: ", a_rgba, b_rgba, c_rgba)
 
-                pixelsToDraw += scanline_algo(a, b, c, a_rgba, b_rgba, c_rgba)
+                pixelsToDraw += scanline_algo(a, b, c)
 
                 # currPixels = []
 
