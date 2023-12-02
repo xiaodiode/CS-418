@@ -176,7 +176,7 @@ def scanline_algo(x, y, z, x_rgba, y_rgba, z_rgba):
 
     return points
 
-def matrix_multiply(a, b):
+def mult_matrix(a, b):
     rows_a, cols_a = len(a), len(a[0])
     rows_b, cols_b = len(b), len(b[0])
 
@@ -330,7 +330,7 @@ with open(sys.argv[1], 'r') as filename:
                     productMatrix = []
         
                     if uniform:
-                        productMatrix = matrix_multiply(uniformMatrix, posMatrix)
+                        productMatrix = mult_matrix(uniformMatrix, posMatrix)
                         x = productMatrix[0][0]
                         y = productMatrix[1][0]
                         z = productMatrix[2][0]
@@ -453,7 +453,7 @@ with open(sys.argv[1], 'r') as filename:
                     productMatrix = []
         
                     if uniform:
-                        productMatrix = matrix_multiply(uniformMatrix, posMatrix)
+                        productMatrix = mult_matrix(uniformMatrix, posMatrix)
                         x = productMatrix[0][0]
                         y = productMatrix[1][0]
                         z = productMatrix[2][0]
