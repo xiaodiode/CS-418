@@ -530,10 +530,10 @@ with open(sys.argv[1], 'r') as filename:
                                 new_a = s_rgba[3] + d_rgba[3]*(1 - s_rgba[3])
 
                                 for i in range(3):
-                                    new_rgba += [(s_rgba[3]/new_a)*s_rgba[i] + (((1 - s_rgba[3])*d_rgba[3])/new_a)*d_rgba[i]]
+                                    new_rgba += [(s_rgba[3]/new_a)*s_rgba[i] + ((new_a - s_rgba[3])/new_a)*d_rgba[i]]
                                 
                                 new_rgba += [new_a]
-
+                                
                                 r = new_rgba[0]
                                 g = new_rgba[1]
                                 b = new_rgba[2]
