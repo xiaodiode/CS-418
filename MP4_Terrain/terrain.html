@@ -209,6 +209,28 @@ function generateTerrain() {
     return g
 }
 
+function addNormals(geom) {
+    let ni = geom.attributes.length
+    geom.attributes.push([])
+    for(let i = 0; i < geom.attributes[0].length; i+=1) {
+        geom.attributes[ni].push([0,0,0])
+    }
+    for(let i = 0; i < geom.triangles.length; i+=1) {
+        let p0 = geom.attributes[0][geom.triangles[i][0]]
+        let p1 = geom.attributes[0][geom.triangles[i][1]]
+        let p2 = geom.attributes[0][geom.triangles[i][2]]
+        let e1 = sub(p1,p0)
+        let e2 = sub(p2,p0)
+        let n = cross(e1,e2)
+        geom.attributes[ni][geom.triangles[i][0]] = add(geom.attributes[ni][geom.triangles[i][0]], n)
+        geom.attributes[ni][geom.triangles[i][1]] = add(geom.attributes[ni][geom.triangles[i][1]], n)
+        geom.attributes[ni][geom.triangles[i][2]] = add(geom.attributes[ni][geom.triangles[i][2]], n)
+    }
+    for(let i = 0; i < geom.attributes[0].length; i+=1) {
+        geom.attributes[ni][i] = normalize(geom.attributes[ni][i])
+    }
+}
+
 /** Draw one frame */
 function draw(seconds) {
     gl.clearColor(...IlliniBlue) // f(...[1,2,3]) means f(1,2,3)
