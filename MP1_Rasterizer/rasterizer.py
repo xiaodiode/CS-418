@@ -528,11 +528,15 @@ with open(sys.argv[1], 'r') as filename:
                                 new_rgba = []
 
                                 new_a = s_rgba[3] + d_rgba[3]*(1 - s_rgba[3])
+                                # print("s_rgba[3], d_rgba[3]: ", s_rgba[3]*255, d_rgba[3]*255)
+                                # print("new_a: ", new_a*255)
 
                                 for i in range(3):
-                                    new_rgba += [(s_rgba[3]/new_a)*s_rgba[i] + ((new_a - s_rgba[3])/new_a)*d_rgba[i]]
+                                    new_rgba += [(s_rgba[3]/new_a)*s_rgba[i] + (((1 - s_rgba[3])*d_rgba[3])/new_a)*d_rgba[i]]
+                                    print("(s_rgba[3]/new_a)*s_rgba[i]: ", (s_rgba[3]/new_a)*s_rgba[i])
                                 
                                 new_rgba += [new_a]
+                                print("new_rgba: ", new_rgba[0]*255,new_rgba[1]*255,new_rgba[2]*255,new_rgba[3]*255)
                                 
                                 r = new_rgba[0]
                                 g = new_rgba[1]

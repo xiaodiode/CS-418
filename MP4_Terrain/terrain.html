@@ -179,7 +179,44 @@ var surface =
         ]
     }
 
-function generateTerrain() {
+function createVector(x,y,z){
+
+    return [x,y,z]
+}
+
+function randomPoint(){
+    let x = Math.random()*gridsize
+    let y = Math.random()*gridsize
+
+    return createVector(x,y,0)
+}
+
+function randomNormalVec(){
+    let theta = Math.random()*2*Math.PI
+
+    let x = Math.cos(theta)
+    let y = Math.sin(theta)
+
+    return createVector(x,y,0)
+}
+
+function coeffFunction(r){
+    let R = calcDistance(createVector(gridSize,0), createVector(0,gridSize))
+    let g = Math.pow(1 - Math.pow(r/R, 2), 2)
+
+    return g
+}
+
+function calcDistance(p1, p2) {
+  let XDiff = p1.x - p1.x
+  let YDiff = p2.y - p2.y
+
+  let distance = Math.sqrt(XDiff**2 + YDiff**2)
+
+  return distance
+}
+
+function generateTerrain(gridsize, faults) {
     g = {"triangles":
         []
     ,"attributes":
@@ -189,22 +226,55 @@ function generateTerrain() {
             []
         ]
     }
-    g.attributes[0].push([0,0,0])
-    g.attributes[1].push([1,1,1])
-    const n = 24
-    const r = 3
-    for(let i=0; i<n; i+=1) {
-        let ang = i*(2*Math.PI)/n
-        let r2 = r - (i%2)
-        g.attributes[0].push(
-            [Math.cos(ang)*r2,0,Math.sin(ang)*r2],
-        )
-        g.attributes[1].push([0,(i%2),0])
+    // console.log()
+    g.attributes[0].push([0,0,0])   // initialize center position
+    g.attributes[1].push([1,1,1])   // set black as initial color
+
+    const n = gridsize
+    const delta = 1
+
+    for( let fault=0; fault<faults; fault+=1){
+        let p = randomPoint()           // generate a random point p in (x,y) bounds of grid
+        let nVec = randomNormalVec()    // generate a random normal vector n (xn,yn,0)
+        
+        for(let i=0; i<n; i+=1) {
+            for(let j=0; j<n; j+=1){
+
+                let b = createVector(j,i,0)
+                let bp_diff = sub(b,p)
+
+                let n_dot = dot(bp_diff, nVec)
+
+                let r = calcDistance(b,p)
+                let g_r = coeffFunction(r)
+
+                if(n_dot >= 0){
+                    b.z += delta*g_r
+                }
+                else{
+                    b.z -= delta*g_r
+                }
+
+                g.attributes[0].push(
+                    // [Math.cos(ang)*r2,0,Math.sin(ang)*r2],
+                    [b.x, b.y, b.z],
+                    //fault calculation
+                )
+                g.attributes[1].push([0,(i%2),0])
+            }
+            
+        }
     }
+    
     for(let i=0; i<n-1; i+=1) {
-        g.triangles.push(0, i+1, i+2)
+        for(let j=0; j<n-1; j+=1){
+            g.triangles.push(i, i+1, i+j)   
+            g.triangles.push(i+1, i+j, i+j+1) 
+        }
+        
     }
-    g.triangles.push(0, n, 1)
+
+    // normals
 
     return g
 }
@@ -309,7 +379,7 @@ window.addEventListener('load', async (event) => {
 
         // TO DO: generate a new gridsize-by-gridsize grid here, then apply faults to it
         
-        // surface = generateTerrain(gridsize, faults)
+        surface = generateTerrain(gridsize, faults)
         window.geom = setupGeomery(surface)
         
         fillScreen()
