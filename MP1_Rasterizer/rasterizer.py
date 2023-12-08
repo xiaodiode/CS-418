@@ -167,6 +167,35 @@ def mult_matrix(a, b):
 
     return result
 
+def srgbToLinear(sRGB):
+    for i in range(3):
+        if(sRGB[i] <= 1 and sRGB[i] >= 0):
+            if(sRGB[i] <= 0.04045):
+                sRGB[i] /= 12.92
+            else:
+                sRGB[i] = ((sRGB[i] + 0.055)/1.055)**2.4
+        if sRGB[i] > 1:
+            sRGB[i] = 1
+        elif sRGB[i] < 0:
+            sRGB[i] = 0
+    
+    return sRGB
+
+def linearToSRGB(linear):
+    for i in range(3):
+        if(linear[i] <= 1 and linear[i] >= 0):
+            if(linear[i] <= 0.0031308):
+                linear[i] *= 12.92
+            else:
+                linear[i] = 1.055*linear[i]**(1/2.4) - 0.055
+        if linear[i] > 1:
+            linear[i] = 1
+        elif linear[i] < 0:
+            linear[i] = 0
+    
+    return linear
+
+
 # ((x/w+1)*width/2, (y/w+1)*height/2)
 # width = 20
 # height = 30
@@ -318,7 +347,6 @@ with open(sys.argv[1], 'r') as filename:
                             
                         # print("new xyzw: ", x,y,z,w)
 
-
                     pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z/w, 1/w])
 
                 print("positionsToDraw: ", positionsToDraw)
@@ -355,8 +383,6 @@ with open(sys.argv[1], 'r') as filename:
 
                 pixelsToDraw += scanline_algo(a, b, c)
 
-                # currPixels = []
-
                 for pixel in pixelsToDraw:
                     x = pixel[0]
                     y = pixel[1]
@@ -368,16 +394,8 @@ with open(sys.argv[1], 'r') as filename:
                         if hyp:
                             pixel[i] /= w # divide rgb by interpolated 1/w
                             
-                        if sRGB:
-                            if(pixel[i] <= 1 and pixel[i] >= 0):
-                                if(pixel[i] <= 0.0031308):
-                                    pixel[i] *= 12.92
-                                else:
-                                    pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
-                            if pixel[i] > 1:
-                                pixel[i] = 1
-                            elif pixel[i] < 0:
-                                pixel[i] = 0
+                    if sRGB:
+                        pixel[4:7] = linearToSRGB(pixel[4:7])
                     # print("new color rgb: ", pixel[4:7])
 
                     if(-width < x < width and -height < y < height):
@@ -386,17 +404,23 @@ with open(sys.argv[1], 'r') as filename:
 
                         if(existingPos):
                             if(existingPos[0][2] >= z):
-                                d_rgba = existingPos[0][4:]
-                                s_rgba = pixel[4:]
+                                d_rgba = srgbToLinear(existingPos[0][4:])
+                                s_rgba = srgbToLinear(pixel[4:])
                                 new_rgba = []
 
                                 new_a = s_rgba[3] + d_rgba[3]*(1 - s_rgba[3])
+                                # print("s_rgba[3], d_rgba[3]: ", s_rgba[3]*255, d_rgba[3]*255)
+                                # print("new_a: ", new_a*255)
 
                                 for i in range(3):
                                     new_rgba += [(s_rgba[3]/new_a)*s_rgba[i] + (((1 - s_rgba[3])*d_rgba[3])/new_a)*d_rgba[i]]
+                                    # print("(s_rgba[3]/new_a)*s_rgba[i]: ", (s_rgba[3]/new_a)*s_rgba[i])
                                 
                                 new_rgba += [new_a]
 
+                                new_rgba = linearToSRGB(new_rgba)
+                                # print("new_rgba: ", new_rgba[0]*255,new_rgba[1]*255,new_rgba[2]*255,new_rgba[3]*255)
+                                
                                 r = new_rgba[0]
                                 g = new_rgba[1]
                                 b = new_rgba[2]
@@ -504,17 +528,9 @@ with open(sys.argv[1], 'r') as filename:
                     for i in range(4,7):
                         if hyp:
                             pixel[i] /= w # divide rgb by interpolated 1/w
-                            
-                        if sRGB:
-                            if(pixel[i] <= 1 and pixel[i] >= 0):
-                                if(pixel[i] <= 0.0031308):
-                                    pixel[i] *= 12.92
-                                else:
-                                    pixel[i] = 1.055*pixel[i]**(1/2.4) - 0.055
-                            if pixel[i] > 1:
-                                pixel[i] = 1
-                            elif pixel[i] < 0:
-                                pixel[i] = 0
+
+                    if sRGB:
+                        pixel[4:7] = linearToSRGB(pixel[4:7])
                     # print("new color rgb: ", pixel[4:7])
 
                     if(-width < x < width and -height < y < height):
@@ -523,8 +539,8 @@ with open(sys.argv[1], 'r') as filename:
 
                         if(existingPos):
                             if(existingPos[0][2] >= z):
-                                d_rgba = existingPos[0][4:]
-                                s_rgba = pixel[4:]
+                                d_rgba = srgbToLinear(existingPos[0][4:])
+                                s_rgba = srgbToLinear(pixel[4:])
                                 new_rgba = []
 
                                 new_a = s_rgba[3] + d_rgba[3]*(1 - s_rgba[3])
@@ -533,10 +549,12 @@ with open(sys.argv[1], 'r') as filename:
 
                                 for i in range(3):
                                     new_rgba += [(s_rgba[3]/new_a)*s_rgba[i] + (((1 - s_rgba[3])*d_rgba[3])/new_a)*d_rgba[i]]
-                                    print("(s_rgba[3]/new_a)*s_rgba[i]: ", (s_rgba[3]/new_a)*s_rgba[i])
+                                    # print("(s_rgba[3]/new_a)*s_rgba[i]: ", (s_rgba[3]/new_a)*s_rgba[i])
                                 
                                 new_rgba += [new_a]
-                                print("new_rgba: ", new_rgba[0]*255,new_rgba[1]*255,new_rgba[2]*255,new_rgba[3]*255)
+
+                                new_rgba = linearToSRGB(new_rgba)
+                                # print("new_rgba: ", new_rgba[0]*255,new_rgba[1]*255,new_rgba[2]*255,new_rgba[3]*255)
                                 
                                 r = new_rgba[0]
                                 g = new_rgba[1]
