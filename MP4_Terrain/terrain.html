@@ -12,13 +12,13 @@
 <script id="vert" type="glsl">
 #version 300 es
 layout(location=0) in vec4 position;
-layout(location=1) in vec4 normal;
+layout(location=1) in vec3 normal;
 uniform mat4 mv;
 uniform mat4 p;
-out vec4 vnormal;
+out vec3 vnormal;
 void main() {
     gl_Position = p * mv * position;
-    vnormal = normal;
+    vnormal = mat3(mv) * normal;
 }
 </script>
 
@@ -28,10 +28,21 @@ void main() {
 #version 300 es
 precision highp float;
 uniform vec4 color;
+
+uniform vec3 lightdir;
+uniform vec3 lightcolor;
+uniform vec3 halfway;
+
 out vec4 fragColor;
-in vec4 vnormal;
+in vec3 vnormal;
 void main() {
-    fragColor = vnormal;
+    vec3 n = normalize(vnormal);
+    float lambert = max(dot(n, lightdir), 0.0);
+    float blinn = pow(max(dot(n, halfway), 0.0), 50.0);
+    fragColor = vec4(
+        color.rgb*(lightcolor*lambert)
+        + lightcolor*blinn
+        , color.a);
 }
 </script>
 
@@ -41,6 +52,8 @@ void main() {
 const IlliniBlue = new Float32Array([0.075, 0.16, 0.292, 1])
 const IlliniOrange = new Float32Array([1, 0.373, 0.02, 1])
 const IdentityMatrix = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1])
+
+const EarthTone = new Float32Array([0.9, 0.8, 0.7])
 
 /**
  * Given the source code of a vertex and fragment shader, compiles them,
@@ -158,8 +171,8 @@ function createVector(x,y,z){
 }
 
 function randomPoint(){
-    let x = Math.random()*gridsize
-    let z = Math.random()*gridsize
+    let x = Math.random()*2 - 1
+    let z = Math.random()*2 - 1
 
     return createVector(x,0,z)
 }
@@ -173,8 +186,8 @@ function randomNormalVec(){
     return createVector(x,0,z)
 }
 
-function coeffFunction(r,n){
-    let R = calcDistance(createVector(n,0,0), createVector(0,0,n))
+function coeffFunction(r){
+    let R = calcDistance(createVector(gridsize,0,0), createVector(0,0,gridsize))
     let g = Math.pow(1 - Math.pow(r/R, 2), 2)
 
     return g
@@ -218,20 +231,19 @@ function generateTerrain(faults) {
     }
 
     const n = gridsize
-    const delta = 1
+    const delta = 0.01
 
-    for(let i=0; i<n; i+=1) {
-        for(let j=0; j<n; j+=1){
+    for(let i=-n/2; i<n/2; i+=1) {
+        for(let j=-n/2; j<n/2; j+=1){
             g.attributes[0].push(
-                [j, 0, i],
+                [j/(n/2), 0, i/(n/2)],
             )
         }
-        
     }
     // console.log("positions: ", g.attributes[0])
-    for(let i=0; i<n-1; i+=1) {
-        for(let j=0; j<n-1; j+=1){
-            let x = j+n*i 
+    for(let i=-n/2; i<n/2-1; i+=1) {
+        for(let j=-n/2; j<n/2-1; j+=1){
+            let x = (j+n/2)+n*(i+n/2) 
             g.triangles.push(
                 [x, x+1, x+n],
             )   
@@ -242,28 +254,28 @@ function generateTerrain(faults) {
         
     }
     console.log("triangles: ", g.triangles)
-    // console.log("positions: ", g.attributes[0])
-    // console.log("faults: ", faults)
+    console.log("positions: ", g.attributes[0])
+    console.log("faults: ", faults)
 
     for(let fault=0; fault<faults; fault+=1){
-        let p = randomPoint(n)           // generate a random point p in (x,y) bounds of grid
-        let nVec = randomNormalVec()    // generate a random normal vector n (xn,yn,0)
+        let randp = randomPoint()           // generate a random point p in (x,y) bounds of grid
+        let nVec = randomNormalVec()    // generate a random normal vector n (xn,0,yn)
 
-        // console.log("random point p: ", p, " random normal Vec: ", nVec)
+        console.log("random point randp: ", randp, " random normal Vec: ", nVec)
         
         for(let i=0; i<n*n; i+=1) {
 
-            let b = g.attributes[0][i]
+            let b = g.attributes[0][i]  //position
             // console.log("original b: ", b)
-            let bp_diff = sub(b,p)
-            // console.log("bp_diff: ", bp_diff, " p: ", p)
+            let bp_diff = sub(b,randp)
+            // console.log("bp_diff: ", bp_diff, " randp: ", randp)
 
             let n_dot = dot(bp_diff, nVec)
             // console.log("n_dot: ", n_dot)
 
-            let r = calcDistance(b,p)
+            let r = calcDistance(b,randp)
             // console.log("r: ", r)
-            let g_r = coeffFunction(r,n)
+            let g_r = coeffFunction(r)
             // console.log("g_r: ", g_r)
 
             if(n_dot >= 0){
@@ -284,7 +296,7 @@ function generateTerrain(faults) {
     let max = getMaxHeight(g.attributes[0])
     let min = getMinHeight(g.attributes[0])
     // console.log("max: ", max, " min: ", min)
-    const c = 10
+    const c = 1
 
     if(faults >= 1){
         for(let i=0; i<n*n; i+=1){
@@ -345,18 +357,18 @@ function addNormals(geom) {
 
         // console.log("nw,n,ne,w,e,sw,s,se: ", nw,n,ne,w,e,sw,s,se)
 
-        // let normals = cross(sub(n,s), sub(w,e))
+        let normals = cross(sub(n,s), sub(w,e))
 
-        var cross1 = cross(sub(n,s), sub(w,e))
-        for(let i=0; i<cross1.length; i++){
-            cross1[i] *= 2
-        }
-        let cross2 = cross(sub(ne,sw), sub(nw,se))
+        // var cross1 = cross(sub(n,s), sub(w,e))
+        // for(let i=0; i<cross1.length; i++){
+        //     cross1[i] *= 2
+        // }
+        // let cross2 = cross(sub(ne,sw), sub(nw,se))
 
-        var normals = add(cross1, cross2)
-        for(let i=0; i<normals.length; i++){
-            normals[i] /=3
-        }
+        // var normals = add(cross1, cross2)
+        // for(let i=0; i<normals.length; i++){
+        //     normals[i] /=3
+        // }
         // console.log("normals: ", normals)
 
         geom.attributes[ni].push(normals)
@@ -366,39 +378,26 @@ function addNormals(geom) {
         geom.attributes[ni][i] = normalize(geom.attributes[ni][i])
     }
 
-    // let ni = geom.attributes.length
-    // geom.attributes.push([])
-    // for(let i = 0; i < geom.attributes[0].length; i+=1) {
-    //     geom.attributes[ni].push([0,0,0])
-    // }
-    // for(let i = 0; i < geom.triangles.length; i+=3) {
-    //     let p0 = geom.attributes[0][geom.triangles[i][0]]
-    //     let p1 = geom.attributes[0][geom.triangles[i][1]]
-    //     let p2 = geom.attributes[0][geom.triangles[i][2]]
-    //     // console.log("geom.triangles[i+1]: ", geom.triangles[i][1])
-    //     let e1 = sub(p1,p0)
-    //     let e2 = sub(p2,p0)
-    //     let n = cross(e1,e2)
-    //     geom.attributes[ni][geom.triangles[i][0]] = add(geom.attributes[ni][geom.triangles[i][0]], n)
-    //     geom.attributes[ni][geom.triangles[i][1]] = add(geom.attributes[ni][geom.triangles[i][1]], n)
-    //     geom.attributes[ni][geom.triangles[i][2]] = add(geom.attributes[ni][geom.triangles[i][2]], n)
-    // }
-    // for(let i = 0; i < geom.attributes[0].length; i+=1) {
-    //     geom.attributes[ni][i] = normalize(geom.attributes[ni][i])
-    // }
 }
 
 /** Draw one frame */
 function draw(seconds) {
-    gl.clearColor(...IlliniBlue) // f(...[1,2,3]) means f(1,2,3)
+    // gl.clearColor(...IlliniBlue)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
     gl.useProgram(program)
 
     gl.bindVertexArray(geom.vao)
 
-    gl.uniform4fv(program.uniforms.color, IlliniOrange)
-    let m = m4rotY(seconds)
-    let v = m4view([2,2,2], [0,0,0], [0,1,0])
+
+    let ldir = normalize([1,1,1])
+    let h = normalize(add(ldir, [0,0,1]))
+    gl.uniform4fv(program.uniforms.color, [1,1,1,1])
+    gl.uniform3fv(program.uniforms.lightcolor, EarthTone)
+    gl.uniform3fv(program.uniforms.lightdir, ldir)
+    gl.uniform3fv(program.uniforms.halfway, h)
+
+    let m = m4mul(m4rotY(seconds))
+    let v = m4view([4,4,4], [0,0,0], [0,1,0])
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m))
     gl.uniformMatrix4fv(program.uniforms.p, false, p)
     
@@ -425,7 +424,7 @@ function fillScreen() {
     canvas.style.height = ''
     if (window.gl) {
         gl.viewport(0,0, canvas.width, canvas.height)
-        window.p = m4perspNegZ(0.1, 10, 1.5, canvas.width, canvas.height)
+        window.p = m4perspNegZ(0.1, 10, 0.5, canvas.width, canvas.height)
     }
 }
 var gridsize
@@ -441,6 +440,8 @@ window.addEventListener('load', async (event) => {
     let fs = document.querySelector('#frag').textContent.trim()
     window.program = compileShader(vs,fs)
     gl.enable(gl.DEPTH_TEST)
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
     
     flag = 0
 
