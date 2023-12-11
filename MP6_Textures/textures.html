@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Gloria's Terrain MP</title>
+    <title>Gloria's Textures MP</title>
     <!-- part of a multi-part demonstration: see cs418.cs.illinois.edu -->
     <script src="wrapWebGL2.js"></script>
     <script src="math.js"></script>
 
 
 <!-- The source code of a vertex shader directly in the HTML. The 'type=' command can have any value except "javascript" and just tells the browser not to try to run the code as javascript. -->
-<!--COMMENT: PROVIDED IN MONKEY CODE, DONT CHANGE ANY OF THIS-->
 <script id="vert" type="glsl">  
 #version 300 es
 layout(location=0) in vec4 position;
@@ -23,7 +22,6 @@ void main() {
 }
 </script>
 
-<!--COMMENT: PROVIDED IN MONKEY CODE, DONT CHANGE ANY OF THIS-->
 <!-- The source code of a fragment shader. -->
 <script id="frag" type="glsl">
 #version 300 es
@@ -54,7 +52,7 @@ const IlliniBlue = new Float32Array([0.075, 0.16, 0.292, 1])
 const IlliniOrange = new Float32Array([1, 0.373, 0.02, 1])
 const IdentityMatrix = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1])
 
-const EarthTone = new Float32Array([0.9, 0.8, 0.7]) // COMMENT: CHANGE VARIABLE NAME AND VALUES 1>r>g>b>0
+const EarthTone = new Float32Array([0.9, 0.8, 0.7]) 
 
 /**
  * Given the source code of a vertex and fragment shader, compiles them,
@@ -165,25 +163,19 @@ function setupGeomery(geom) {
 <!-- All the other code in one big script element. -->
 <script>
 
-/* 
-
-COMMENT: ALL FUNCTIONS UNTIL DRAW ARE ORIGINAL STUFF I WROTE. MAYBE GET RID OF SOME HELPER FUNCTIONS AND IMPLEMENT IT IN 
-THE MAIN FUNCTION (generateTerrain)
-
-*/
-function createVector(x,y,z){   // COMMENT: GET RID OF THIS HELPER FUNCTION AND REPLACE ALL THE USAGES WITH [x,y,z]
+function createVector(x,y,z){  
 
     return [x,y,z]
 }
 
-function randomPoint(){ // COMMENT: YOU CAN GET RID OF THIS HELPER FUNCTION AND REPLACE THE LOGIC IN MAIN FUNCTION (generateTerrain)
+function randomPoint(){ 
     let x = Math.random()*2 - 1
     let z = Math.random()*2 - 1
 
     return createVector(x,0,z)
 }
 
-function randomNormalVec(){ // COMMENT: YOU CAN GET RID OF THIS HELPER FUNCTION AND REPLACE THE LOGIC IN MAIN FUNCTION (generateTerrain)
+function randomNormalVec(){ 
     let theta = Math.random()*2*Math.PI
 
     let x = Math.cos(theta)
@@ -192,14 +184,14 @@ function randomNormalVec(){ // COMMENT: YOU CAN GET RID OF THIS HELPER FUNCTION 
     return createVector(x,0,z)
 }
 
-function coeffFunction(r){ // COMMENT: USE A DIFFERENT VALUE FOR R (capital), R (capital) IS SUPPOSED TO BE A RANDOM VALUE YOU DECIDE
+function coeffFunction(r){
     let R = calcDistance(createVector(gridsize,0,0), createVector(0,0,gridsize))
     let g = Math.pow(1 - Math.pow(r/R, 2), 2)
 
     return g
 }
 
-function calcDistance(p1, p2) { // COMMENT: YOU CAN GET RID OF THIS HELPER FUNCTION AND REPLACE THE LOGIC IN MAIN FUNCTION (generateTerrain)
+function calcDistance(p1, p2) {
   let XDiff = p2[0] - p1[0]
   let ZDiff = p2[2] - p1[2]
 
@@ -208,7 +200,7 @@ function calcDistance(p1, p2) { // COMMENT: YOU CAN GET RID OF THIS HELPER FUNCT
   return distance
 }
 
-function getMinHeight(terrain){ // COMMENT: CHANGE ALL VARIABLE NAMES
+function getMinHeight(terrain){ 
     let min = Infinity
     for(let i=0; i<gridsize*gridsize; i+=1){
         min = Math.min(terrain[i][1], min)  
@@ -218,7 +210,7 @@ function getMinHeight(terrain){ // COMMENT: CHANGE ALL VARIABLE NAMES
     return min
 }
 
-function getMaxHeight(terrain){ // COMMENT: CHANGE ALL VARIABLE NAMES
+function getMaxHeight(terrain){ 
     let max = -Infinity
     for(let i=0; i<gridsize*gridsize; i+=1){
         max = Math.max(terrain[i][1], max)
@@ -227,8 +219,8 @@ function getMaxHeight(terrain){ // COMMENT: CHANGE ALL VARIABLE NAMES
     return max
 }
 
-function generateTerrain(faults) {  // COMMENT: MAYBE RENAME THE FUNCTION?
-    g = {"triangles":   // COMMENT: RENAME g?
+function generateTerrain(faults) {  
+    g = {"triangles":   
         []
     ,"attributes":
         [ // position
@@ -236,10 +228,10 @@ function generateTerrain(faults) {  // COMMENT: MAYBE RENAME THE FUNCTION?
         ]
     }
 
-    const n = gridsize  // COMMENT: YOU CAN DIRECTLY USE THE VARIABLE "gridsize" RATHER THAN SHORTENING TO n
-    const delta = 0.01  // COMMENT: CHANGE THIS VALUE (MUST BE FAIRLY SMALL)
+    const n = gridsize  
+    const delta = 0.01  
 
-    for(let i=-n/2; i<n/2; i+=1) {  // COMMENT: CHANGE NAMES OF i AND j?
+    for(let i=-n/2; i<n/2; i+=1) {  
         for(let j=-n/2; j<n/2; j+=1){
             g.attributes[0].push(
                 [j/(n/2), 0, i/(n/2)],
@@ -247,9 +239,9 @@ function generateTerrain(faults) {  // COMMENT: MAYBE RENAME THE FUNCTION?
         }
     }
     // console.log("positions: ", g.attributes[0])
-    for(let i=-n/2; i<n/2-1; i+=1) {    // COMMENT: CHANGE NAMES OF i AND j?
+    for(let i=-n/2; i<n/2-1; i+=1) {   
         for(let j=-n/2; j<n/2-1; j+=1){
-            let x = (j+n/2)+n*(i+n/2)   // COMMENT: CHANGE NAME FOR x?
+            let x = (j+n/2)+n*(i+n/2)  
             g.triangles.push(
                 [x, x+1, x+n],
             )   
@@ -279,13 +271,13 @@ function generateTerrain(faults) {  // COMMENT: MAYBE RENAME THE FUNCTION?
             let n_dot = dot(bp_diff, nVec)
             // console.log("n_dot: ", n_dot)
 
-            let r = calcDistance(b,randp) // COMMENT: USES ONE OF MY ORIGINAL HELPER FUNCTIONS, MAYBE REPLACE WITH ACTUAL LOGIC
+            let r = calcDistance(b,randp) 
             // console.log("r: ", r)
             let g_r = coeffFunction(r)
             // console.log("g_r: ", g_r)
 
             if(n_dot >= 0){
-                b[1] += delta*g_r   // COMMENT: MAYBE SWITCH MULTIPLICATION ORDERING?
+                b[1] += delta*g_r  
             }
             else{
                 b[1] -= delta*g_r
@@ -299,10 +291,10 @@ function generateTerrain(faults) {  // COMMENT: MAYBE RENAME THE FUNCTION?
         }
     }
 
-    let max = getMaxHeight(g.attributes[0]) // COMMENT: USES ONE OF MY ORIGINAL HELPER FUNCTIONS, MAYBE REPLACE WITH ACTUAL LOGIC
-    let min = getMinHeight(g.attributes[0]) // COMMENT: USES ONE OF MY ORIGINAL HELPER FUNCTIONS, MAYBE REPLACE WITH ACTUAL LOGIC
+    let max = getMaxHeight(g.attributes[0]) 
+    let min = getMinHeight(g.attributes[0]) 
     // console.log("max: ", max, " min: ", min)
-    const c = 1 // COMMENT: CHANGE THIS C VALUE WHICH CONTROLS THE AMPLITUDE OF THE TERRAIN, EACH PERSON DECIDES THEIR OWN CONSTANT
+    const c = 1 
 
     if(faults >= 1){
         for(let i=0; i<n*n; i+=1){
@@ -316,7 +308,7 @@ function generateTerrain(faults) {  // COMMENT: MAYBE RENAME THE FUNCTION?
     return g
 }
 
-function addNormals(geom) { // COMMENT: MOST OF THIS CONTENT IS MINE, MAYBE REORDER THE IF STATEMENTS AND GET RID OF UNNECESSARY VARIABLE NAMES/CODE
+function addNormals(geom) { 
     let ni = geom.attributes.length
     geom.attributes.push([])
 
@@ -380,10 +372,27 @@ function addNormals(geom) { // COMMENT: MOST OF THIS CONTENT IS MINE, MAYBE REOR
         geom.attributes[ni].push(normals)
     }
 
-    for(let i = 0; i < geom.attributes[0].length; i+=1) {   // COMMENT: YOU CAN LEAVE THIS ALONE UNLESS YOU REPLACE THE geom VARIABLE NAME
+    for(let i = 0; i < geom.attributes[0].length; i+=1) {   
         geom.attributes[ni][i] = normalize(geom.attributes[ni][i])
     }
 
+}
+
+var red, green, blue, alpha
+
+function generateTexture(terrain){
+    console.log("material: ", material)
+    if(material == ''){
+        
+    }
+    else if(material.substr(0,1) == '#' && material.length == 9){   // checks whether first character of input is # to indicate hexadecimal value
+        red = material.substr(1,2)      
+        green = material.substr(3,2)
+        blue = material.substr(5,2)
+        alpha = material.substr(7,2)
+
+        console.log("rgba values: ", red,green,blue,alpha)
+    }
 }
 
 /** Draw one frame */
@@ -398,12 +407,12 @@ function draw(seconds) {
     let ldir = normalize([1,1,1])
     let h = normalize(add(ldir, [0,0,1]))
     gl.uniform4fv(program.uniforms.color, [1,1,1,1])
-    gl.uniform3fv(program.uniforms.lightcolor, EarthTone)   // COMMENT: CHANGE EARTHTONE TO A DIFFERENT NAME
+    gl.uniform3fv(program.uniforms.lightcolor, EarthTone)  
     gl.uniform3fv(program.uniforms.lightdir, ldir)
     gl.uniform3fv(program.uniforms.halfway, h)
 
     let m = m4mul(m4rotY(seconds))
-    let v = m4view([4,4,4], [0,0,0], [0,1,0])   // COMMENT: CHANGE THE FIRST PARAMETER ([4,4,4] TO SOMETHING ELSE
+    let v = m4view([4,4,4], [0,0,0], [0,1,0])   
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m))
     gl.uniformMatrix4fv(program.uniforms.p, false, p)
     
@@ -430,10 +439,11 @@ function fillScreen() {
     canvas.style.height = ''
     if (window.gl) {
         gl.viewport(0,0, canvas.width, canvas.height)
-        window.p = m4perspNegZ(0.1, 10, 0.4, canvas.width, canvas.height)   // COMMENT: CHANGE THE THIRD PARAMETER (0.4) TO A DIFFERENT VALUE maybe 0.55?
+        window.p = m4perspNegZ(0.1, 10, 0.4, canvas.width, canvas.height)   
     }
 }
-var gridsize    // COMMENT: PLACE THIS SOMEWHERE ELSE
+var gridsize   
+var material
 
 /** Compile, link, set up geometry */
 window.addEventListener('load', async (event) => {
@@ -455,9 +465,13 @@ window.addEventListener('load', async (event) => {
         gridsize = Number(document.querySelector('#gridsize').value) || 2
         const faults = Number(document.querySelector('#faults').value) || 0
 
+        material = String(document.querySelector("#material").value)
+
         // TO DO: generate a new gridsize-by-gridsize grid here, then apply faults to it
         
-        surface = generateTerrain(faults)   // COMMENT: CHANGE THIS VARIABLE NAME (surface) AND FUNCTION NAME
+        surface = generateTerrain(faults)   
+
+        generateTexture(surface)
         
         window.geom = setupGeomery(surface)
         
@@ -496,6 +510,7 @@ window.addEventListener('load', async (event) => {
 <form class="controls" action="javascript:void(0);">
     <label>Grid size: <input id="gridsize" type="number" value="50"/></label>
     <label>Faults: <input id="faults" type="number" value="50"/></label>
+    <label>Material: <input id="material" type="string" /></label>
     <input id="submit" type="submit" value="Regenerate Terrain"/>
 </form>
 <div class="display">

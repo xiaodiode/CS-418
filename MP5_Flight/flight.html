@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Gloria's Terrain MP</title>
+    <title>Gloria's Flight MP</title>
     <!-- part of a multi-part demonstration: see cs418.cs.illinois.edu -->
     <script src="wrapWebGL2.js"></script>
     <script src="math.js"></script>
@@ -261,7 +261,7 @@ function generateTerrain(faults) {
         let randp = randomPoint()           // generate a random point p in (x,y) bounds of grid
         let nVec = randomNormalVec()    // generate a random normal vector n (xn,0,yn)
 
-        console.log("random point randp: ", randp, " random normal Vec: ", nVec)
+        // console.log("random point randp: ", randp, " random normal Vec: ", nVec)
         
         for(let i=0; i<n*n; i+=1) {
 
@@ -396,18 +396,97 @@ function draw(seconds) {
     gl.uniform3fv(program.uniforms.lightdir, ldir)
     gl.uniform3fv(program.uniforms.halfway, h)
 
+    var r
+
+    var pitchRate = 0.01
+    var yPitch = 0  // up/down movemnt
+
+    var moveRate = 0.2
+    var xMove = 0   // left/right movement
+    var zMove = 0  // forward/backward movement
+
+
+    if (keysBeingPressed['ArrowUp']) { 
+        yPitch += pitchRate
+        console.log("Up arrow pressed")
+    }
+    else if (keysBeingPressed['ArrowDown']) { 
+        yPitch -= pitchRate
+        console.log("Down arrow pressed")
+    }
+
+    else if (keysBeingPressed['ArrowLeft']) { 
+
+        console.log("Left arrow pressed")
+    }
+    else if (keysBeingPressed['ArrowRight']) { 
+        console.log("Right arrow pressed")
+    }
+
+    else if (keysBeingPressed['w']) { 
+        console.log("w arrow pressed")
+    }
+    else if (keysBeingPressed['s']) { 
+        console.log("s arrow pressed")
+    }
+    
+    else if (keysBeingPressed['a']) { 
+        console.log("a arrow pressed")
+    }
+    else if (keysBeingPressed['d']) { 
+        console.log("d arrow pressed")
+    }
+
+    else{ // no keys pressed, reset pitch and move
+        yPitch = 0
+
+        xMove = 0
+        zMove = 0
+    }
+
     // let m = m4mul(m4rotY(seconds))
     let v = m4view([4,4,4], [0,0,0], [0,1,0])
-    gl.uniformMatrix4fv(program.uniforms.mv, false, v)
+    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(r,v))
     gl.uniformMatrix4fv(program.uniforms.p, false, p)
     
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 }
 
+// function fly(){
+//     if (keysBeingPressed['ArrowUp']) { 
+//         console.log("Up arrow pressed")
+//     }
+//     else if (keysBeingPressed['ArrowDown']) { 
+//         console.log("Down arrow pressed")
+//     }
+
+//     if (keysBeingPressed['ArrowLeft']) { 
+//         console.log("Left arrow pressed")
+//     }
+//     else if (keysBeingPressed['ArrowRight']) { 
+//         console.log("Right arrow pressed")
+//     }
+
+//     if (keysBeingPressed['w']) { 
+//         console.log("w arrow pressed")
+//     }
+//     else if (keysBeingPressed['s']) { 
+//         console.log("s arrow pressed")
+//     }
+
+//     if (keysBeingPressed['a']) { 
+//         console.log("a arrow pressed")
+//     }
+//     else if (keysBeingPressed['d']) { 
+//         console.log("d arrow pressed")
+//     }
+// }
+
 /** Compute any time-varying or animated aspects of the scene */
 function tick(milliseconds) {
     let seconds = milliseconds / 1000;
 
+    fly();
     draw(seconds)
     requestAnimationFrame(tick)
 }
@@ -459,6 +538,10 @@ window.addEventListener('load', async (event) => {
 
         
 })
+
+window.keysBeingPressed = {}
+window.addEventListener('keydown', event => keysBeingPressed[event.key] = true)
+window.addEventListener('keyup', event => keysBeingPressed[event.key] = false)
 
 
 
