@@ -23,7 +23,7 @@ void main() {
 </script>
 
 <!-- The source code of a fragment shader. -->
-<script id="frag" type="glsl">
+<script id="nonTexture_frag" type="glsl">
 #version 300 es
 precision highp float;
 uniform vec4 color;
@@ -36,14 +36,36 @@ out vec4 fragColor;
 in vec3 vnormal;
 void main() {
     vec3 n = normalize(vnormal);
-    float lambert = max(dot(n, lightdir), 0.0);
-    float blinn = pow(max(dot(n, halfway), 0.0), 50.0);
+    float lambert = max(dot(n, lightdir), 0.0)*(1.0 - color.a);
+    float blinn = pow(max(dot(n, halfway), 0.0), 50.0)*(3.0*color.a);
     fragColor = vec4(
         color.rgb*(lightcolor*lambert)
         + lightcolor*blinn
-        , color.a);
+        , 1);
 }
 </script>
+
+<script id="texture_frag" type="glsl">
+    #version 300 es
+    precision highp float;
+    uniform vec4 color;
+    
+    uniform vec3 lightdir;
+    uniform vec3 lightcolor;
+    uniform vec3 halfway;
+    
+    out vec4 fragColor;
+    in vec3 vnormal;
+    void main() {
+        vec3 n = normalize(vnormal);
+        float lambert = max(dot(n, lightdir), 0.0);
+        float blinn = pow(max(dot(n, halfway), 0.0), 50.0);
+        fragColor = vec4(
+            color.rgb*(lightcolor*lambert)
+            + lightcolor*blinn
+            , color.a);
+    }
+    </script>
 
 
 <!-- Code I don't expect to change. -->
@@ -52,7 +74,8 @@ const IlliniBlue = new Float32Array([0.075, 0.16, 0.292, 1])
 const IlliniOrange = new Float32Array([1, 0.373, 0.02, 1])
 const IdentityMatrix = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1])
 
-const EarthTone = new Float32Array([0.9, 0.8, 0.7]) 
+const EarthTone = new Float32Array([0.9, 0.8, 0.7, 1]) 
+var TerrainColor = [1,1,1,0.3]
 
 /**
  * Given the source code of a vertex and fragment shader, compiles them,
@@ -251,9 +274,9 @@ function generateTerrain(faults) {
         }
         
     }
-    console.log("triangles: ", g.triangles)
-    console.log("positions: ", g.attributes[0])
-    console.log("faults: ", faults)
+    // console.log("triangles: ", g.triangles)
+    // console.log("positions: ", g.attributes[0])
+    // console.log("faults: ", faults)
 
     for(let fault=0; fault<faults; fault+=1){
         let randp = randomPoint()           // generate a random point p in (x,y) bounds of grid
@@ -380,18 +403,36 @@ function addNormals(geom) {
 
 var red, green, blue, alpha
 
-function generateTexture(terrain){
+function generateTexture(){
     console.log("material: ", material)
     if(material == ''){
-        
+        console.log("blank")
+        TerrainColor = [1,1,1,0.3]
     }
-    else if(material.substr(0,1) == '#' && material.length == 9){   // checks whether first character of input is # to indicate hexadecimal value
-        red = material.substr(1,2)      
-        green = material.substr(3,2)
-        blue = material.substr(5,2)
-        alpha = material.substr(7,2)
+    else if(/^#[0-9a-f]{8}$/i.test(material)){   // checks whether first character of input is # to indicate hexadecimal value
+        red = Number('0x' + material.substr(1,2))/255.0
+        green = Number('0x' + material.substr(3,2))/255.0
+        blue = Number('0x' + material.substr(5,2))/255.0
+        alpha = Number('0x' + material.substr(7,2))/255.0
+
+        TerrainColor = [red, green, blue, alpha]
 
         console.log("rgba values: ", red,green,blue,alpha)
+    }
+    else if(/[.](jpg|png)$/.test(material)){
+        console.log("png inputted")
+
+        let img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.src = material
+        img.addEventListener('error', (event) => {
+            console.log("Image failed to load")
+            isTexture = false
+            TerrainColor = [1,0,1,0]
+        })
+        img.addEventListener('load', (event) => {
+            
+        })
     }
 }
 
@@ -406,8 +447,8 @@ function draw(seconds) {
 
     let ldir = normalize([1,1,1])
     let h = normalize(add(ldir, [0,0,1]))
-    gl.uniform4fv(program.uniforms.color, [1,1,1,1])
-    gl.uniform3fv(program.uniforms.lightcolor, EarthTone)  
+    gl.uniform4fv(program.uniforms.color, TerrainColor)
+    gl.uniform3fv(program.uniforms.lightcolor, [1,1,1])  
     gl.uniform3fv(program.uniforms.lightdir, ldir)
     gl.uniform3fv(program.uniforms.halfway, h)
 
@@ -444,6 +485,7 @@ function fillScreen() {
 }
 var gridsize   
 var material
+var isTexture = false
 
 /** Compile, link, set up geometry */
 window.addEventListener('load', async (event) => {
@@ -453,8 +495,11 @@ window.addEventListener('load', async (event) => {
     )
     
     let vs = document.querySelector('#vert').textContent.trim()
-    let fs = document.querySelector('#frag').textContent.trim()
-    window.program = compileShader(vs,fs)
+
+    let texture_fs = document.querySelector('#texture_frag').textContent.trim()
+    let nonTexture_fs = document.querySelector("#nonTexture_frag").textContent.trim()
+
+    window.program = compileShader(vs, nonTexture_fs)
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -465,14 +510,7 @@ window.addEventListener('load', async (event) => {
         gridsize = Number(document.querySelector('#gridsize').value) || 2
         const faults = Number(document.querySelector('#faults').value) || 0
 
-        material = String(document.querySelector("#material").value)
-
-        // TO DO: generate a new gridsize-by-gridsize grid here, then apply faults to it
-        
         surface = generateTerrain(faults)   
-
-        generateTexture(surface)
-        
         window.geom = setupGeomery(surface)
         
         fillScreen()
@@ -484,6 +522,18 @@ window.addEventListener('load', async (event) => {
 
         flag = 1
         
+    })
+
+    document.querySelector("#material").addEventListener('change', event => {
+        material = String(document.querySelector('#material').value)
+        generateTexture()
+
+        if(isTexture){
+            window.program = compileShader(vs, texture_fs)
+        }
+        else{
+            window.program = compileShader(vs, nonTexture_fs)
+        }
     })
 })
 
