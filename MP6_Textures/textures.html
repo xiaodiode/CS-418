@@ -48,7 +48,7 @@ void main() {
 <script id="texture_frag" type="glsl">
     #version 300 es
     precision highp float;
-    uniform sampler2D image;
+    uniform sampler2D imageTexture;
     
     uniform vec3 lightdir;
     uniform vec3 lightcolor;
@@ -431,7 +431,10 @@ function generateTexture(){
             TerrainColor = [1,0,1,0]
         })
         img.addEventListener('load', (event) => {
-            
+            let slot = 0
+            let texture = gl.createTexture()
+            gl.activeTexture(gl.TEXTURE0 + slot)
+            gl.bindTexture(gl.TEXTURE_2d, texture)
         })
     }
 }
