@@ -30,16 +30,15 @@ void main() {
 #version 300 es
 precision highp float;
 uniform vec4 color;
-
-in vec3 vlightdir;
 uniform vec3 lightcolor;
 uniform vec3 halfway;
-
 out vec4 fragColor;
 in vec3 vnormal;
+in vec3 vlightdir;
+
 void main() {
     vec3 n = normalize(vnormal);
-    float lambert = max(dot(n, normalize(vlightdir)), 0.0);
+    float lambert = max(dot(n, vlightdir), 0.0);
     float blinn = pow(max(dot(n, halfway), 0.0), 50.0);
     fragColor = vec4(
         color.rgb*(lightcolor*lambert)
