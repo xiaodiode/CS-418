@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Gloria's Flight MP</title>
+    <!-- part of a multi-part demonstration: see cs418.cs.illinois.edu -->
+    <script src="wrapWebGL2.js"></script>
+    <script src="math.js"></script>
+
+
+<!-- The source code of a vertex shader directly in the HTML. The 'type=' command can have any value except "javascript" and just tells the browser not to try to run the code as javascript. -->
+<script id="vert" type="glsl">
+#version 300 es
+layout(location=0) in vec4 position;
+layout(location=1) in vec3 normal;
+uniform mat4 mv;
+uniform mat4 p;
+out vec3 vnormal;
+void main() {
+    gl_Position = p * mv * position;
+    vnormal = mat3(mv) * normal;
+}
+</script>
+
+
+<!-- The source code of a fragment shader. -->
+<script id="frag" type="glsl">
+#version 300 es
+precision highp float;
+uniform vec4 color;
+
+uniform vec3 lightdir;
+uniform vec3 lightcolor;
+uniform vec3 halfway;
+
+out vec4 fragColor;
+in vec3 vnormal;
+void main() {
+    vec3 n = normalize(vnormal);
+    float lambert = max(dot(n, lightdir), 0.0);
+    float blinn = pow(max(dot(n, halfway), 0.0), 50.0);
+    fragColor = vec4(
+        color.rgb*(lightcolor*lambert)
+        + lightcolor*blinn
+        , color.a);
+}
+</script>
+
+
+<!-- Code I don't expect to change. -->
+<script>
+const IlliniBlue = new Float32Array([0.075, 0.16, 0.292, 1])
+const IlliniOrange = new Float32Array([1, 0.373, 0.02, 1])
+const IdentityMatrix = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1])
+
+const EarthTone = new Float32Array([0.9, 0.8, 0.7, 1])
+
+/**
+ * Given the source code of a vertex and fragment shader, compiles them,
+ * and returns the linked program.
+ */
+ function compileShader(vs_source, fs_source) {
+    const vs = gl.createShader(gl.VERTEX_SHADER)
+    gl.shaderSource(vs, vs_source)
+    gl.compileShader(vs)
+    if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(vs))
+        throw Error("Vertex shader compilation failed")
+    }
+
+    const fs = gl.createShader(gl.FRAGMENT_SHADER)
+    gl.shaderSource(fs, fs_source)
+    gl.compileShader(fs)
+    if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(fs))
+        throw Error("Fragment shader compilation failed")
+    }
+
+    const program = gl.createProgram()
+    gl.attachShader(program, vs)
+    gl.attachShader(program, fs)
+    gl.linkProgram(program)
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(program))
+        throw Error("Linking failed")
+    }
+    
+    const uniforms = {}
+    for(let i=0; i<gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS); i+=1) {
+        let info = gl.getActiveUniform(program, i)
+        uniforms[info.name] = gl.getUniformLocation(program, info.name)
+    }
+    program.uniforms = uniforms
+
+    return program
+}
+
+/**
+ * Sends per-vertex data to the GPU and connects it to a VS input
+ * 
+ * @param data    a 2D array of per-vertex data (e.g. [[x,y,z,w],[x,y,z,w],...])
+ * @param loc     the layout location of the vertex shader's `in` attribute
+ * @param mode    (optional) gl.STATIC_DRAW, gl.DYNAMIC_DRAW, etc
+ * 
+ * @returns the ID of the buffer in GPU memory; useful for changing data later
+ */
+function supplyDataBuffer(data, loc, mode) {
+    if (mode === undefined) mode = gl.STATIC_DRAW
+    
+    const buf = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+    const f32 = new Float32Array(data.flat())
+    gl.bufferData(gl.ARRAY_BUFFER, f32, mode)
+    
+    gl.vertexAttribPointer(loc, data[0].length, gl.FLOAT, false, 0, 0)
+    gl.enableVertexAttribArray(loc)
+    
+    return buf;
+}
+
+/**
+ * Creates a Vertex Array Object and puts into it all of the data in the given
+ * JSON structure, which should have the following form:
+ * 
+ * ````
+ * {"triangles": a list of of indices of vertices
+ * ,"attributes":
+ *  [ a list of 1-, 2-, 3-, or 4-vectors, one per vertex to go in location 0
+ *  , a list of 1-, 2-, 3-, or 4-vectors, one per vertex to go in location 1
+ *  , ...
+ *  ]
+ * }
+ * ````
+ * 
+ * @returns an object with four keys:
+ *  - mode = the 1st argument for gl.drawElements
+ *  - count = the 2nd argument for gl.drawElements
+ *  - type = the 3rd argument for gl.drawElements
+ *  - vao = the vertex array object for use with gl.bindVertexArray
+ */
+function setupGeomery(geom) {
+    var triangleArray = gl.createVertexArray()
+    gl.bindVertexArray(triangleArray)
+
+    for(let i=0; i<geom.attributes.length; i+=1) {
+        let data = geom.attributes[i]
+        supplyDataBuffer(data, i)
+    }
+
+    var indices = new Uint16Array(geom.triangles.flat())
+    var indexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW)
+
+    return {
+        mode: gl.TRIANGLES,
+        count: indices.length,
+        type: gl.UNSIGNED_SHORT,
+        vao: triangleArray
+    }
+}
+</script>
+
+<!-- All the other code in one big script element. -->
+<script>
+
+
+function createVector(x,y,z){
+
+    return [x,y,z]
+}
+
+function randomPoint(){
+    let x = Math.random()*2 - 1
+    let z = Math.random()*2 - 1
+
+    return createVector(x,0,z)
+}
+
+function randomNormalVec(){
+    let theta = Math.random()*2*Math.PI
+
+    let x = Math.cos(theta)
+    let z = Math.sin(theta)
+
+    return createVector(x,0,z)
+}
+
+function coeffFunction(r){
+    let R = calcDistance(createVector(gridsize,0,0), createVector(0,0,gridsize))
+    let g = Math.pow(1 - Math.pow(r/R, 2), 2)
+
+    return g
+}
+
+function calcDistance(p1, p2) {
+  let XDiff = p2[0] - p1[0]
+  let ZDiff = p2[2] - p1[2]
+
+  let distance = Math.sqrt(XDiff**2 + ZDiff**2)
+
+  return distance
+}
+
+function getMinHeight(terrain){
+    let min = Infinity
+    for(let i=0; i<gridsize*gridsize; i+=1){
+        min = Math.min(terrain[i][1], min)  
+        // console.log("min: ", min)
+    }
+
+    return min
+}
+
+function getMaxHeight(terrain){
+    let max = -Infinity
+    for(let i=0; i<gridsize*gridsize; i+=1){
+        max = Math.max(terrain[i][1], max)
+    }
+
+    return max
+}
+
+function generateTerrain(faults) {
+    g = {"triangles":
+        []
+    ,"attributes":
+        [ // position
+            []
+        ]
+    }
+
+    const n = gridsize
+    const delta = 0.01
+
+    for(let i=-n/2; i<n/2; i+=1) {
+        for(let j=-n/2; j<n/2; j+=1){
+            g.attributes[0].push(
+                [j/(n/2), 0, i/(n/2)],
+            )
+        }
+    }
+    // console.log("positions: ", g.attributes[0])
+    for(let i=-n/2; i<n/2-1; i+=1) {
+        for(let j=-n/2; j<n/2-1; j+=1){
+            let x = (j+n/2)+n*(i+n/2) 
+            g.triangles.push(
+                [x, x+1, x+n],
+            )   
+            g.triangles.push(
+                [x+1, x+n, x+n+1],
+            ) 
+        }
+        
+    }
+    // console.log("triangles: ", g.triangles)
+    // console.log("positions: ", g.attributes[0])
+    // console.log("faults: ", faults)
+
+    for(let fault=0; fault<faults; fault+=1){
+        let randp = randomPoint()           // generate a random point p in (x,y) bounds of grid
+        let nVec = randomNormalVec()    // generate a random normal vector n (xn,0,yn)
+
+        // console.log("random point randp: ", randp, " random normal Vec: ", nVec)
+        
+        for(let i=0; i<n*n; i+=1) {
+
+            let b = g.attributes[0][i]  //position
+            // console.log("original b: ", b)
+            let bp_diff = sub(b,randp)
+            // console.log("bp_diff: ", bp_diff, " randp: ", randp)
+
+            let n_dot = dot(bp_diff, nVec)
+            // console.log("n_dot: ", n_dot)
+
+            let r = calcDistance(b,randp)
+            // console.log("r: ", r)
+            let g_r = coeffFunction(r)
+            // console.log("g_r: ", g_r)
+
+            if(n_dot >= 0){
+                b[1] += delta*g_r
+            }
+            else{
+                b[1] -= delta*g_r
+            }
+            // console.log("new b: ", b)
+
+            g.attributes[0][i] = b
+            // console.log("g.attributes[0][i]: ", g.attributes[0][i], " i: ", i)
+            
+            
+        }
+    }
+
+    let max = getMaxHeight(g.attributes[0])
+    let min = getMinHeight(g.attributes[0])
+    // console.log("max: ", max, " min: ", min)
+    const c = 1
+
+    if(faults >= 1){
+        for(let i=0; i<n*n; i+=1){
+            let height = g.attributes[0][i][1]
+            g.attributes[0][i][1] = c*(height - 0.5*(max + min))/(max - min)
+        }
+    }
+    
+    addNormals(g)
+
+    return g
+}
+
+function addNormals(geom) {
+    let ni = geom.attributes.length
+    geom.attributes.push([])
+
+    for(let i=0; i<geom.attributes[0].length; i+=1) {
+        if(i < gridsize){                               // vertex is at top edge of terrain
+            var n = geom.attributes[0][i]
+        }
+        else{
+            var n = geom.attributes[0][i-gridsize]
+        }
+
+        if(i % gridsize == 0){                          // vertex is at left edge of terrain
+            var w = geom.attributes[0][i]
+        }
+        else{
+            var w = geom.attributes[0][i-1]
+        }
+
+        if(i >= geom.attributes[0].length-gridsize){    // vertex is at bottom edge of terrain
+            var s = geom.attributes[0][i]
+        }
+        else{
+            var s = geom.attributes[0][i+gridsize]
+        }
+
+        if(i % gridsize == gridsize - 1){               // vertex is at right edge of terrain
+            var e = geom.attributes[0][i]
+        }
+        else{
+            var e = geom.attributes[0][i+1]
+        }
+
+        // console.log("nw,n,ne,w,e,sw,s,se: ", nw,n,ne,w,e,sw,s,se)
+
+        let normals = cross(sub(n,s), sub(w,e))
+
+        geom.attributes[ni].push(normals)
+    }
+
+    for(let i = 0; i < geom.attributes[0].length; i+=1) {
+        geom.attributes[ni][i] = normalize(geom.attributes[ni][i])
+    }
+
+}
+
+var vertPitchRate = 0.004    // rate of camera's vertical pitch 
+var horPivotRate = 0.004     // rate of camera's horizontal pivot 
+var verticalPitch = 0       // up/down pitch movemnt
+var horizontalPivot = 0     // left/right pivot movement
+
+var xMoveRate = 0.02       // rate of camera horizontal movement
+var zMoveRate = 0.04        // rate of camera depth movement
+var xMove = 0               // left/right delta movement
+var zMove = 0               // forward/backward delta movement
+
+var currView = m4view([4,4,4], [0,0,0], [0,1,0])
+
+/** Draw one frame */
+function draw(seconds) {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+    gl.useProgram(program)
+
+    gl.bindVertexArray(geom.vao)
+
+    let ldir = normalize([1,1,1])
+    let h = normalize(add(ldir, [0,0,1]))
+    gl.uniform4fv(program.uniforms.color, EarthTone)
+    gl.uniform3fv(program.uniforms.lightcolor, [1,1,1])
+    gl.uniform3fv(program.uniforms.lightdir, ldir)
+    gl.uniform3fv(program.uniforms.halfway, h)
+
+
+    /* Controls camera's rotation */
+    if (keysBeingPressed['ArrowUp']) {  // pitch the camera to look closer to the sky
+        verticalPitch = -vertPitchRate
+        console.log("Up arrow pressed")
+    }
+    else if (keysBeingPressed['ArrowDown']) { // pitch the camera to look closer to the ground
+        verticalPitch = vertPitchRate
+        console.log("Down arrow pressed")
+    }
+    else{
+        verticalPitch = 0
+    }
+
+    if (keysBeingPressed['ArrowLeft']) { // pivot along the up-down axis to look to the left
+        horizontalPivot = -horPivotRate
+        console.log("Left arrow pressed")
+    }
+    else if (keysBeingPressed['ArrowRight']) { // pivot along the up-down axis to look to the right
+        horizontalPivot = horPivotRate
+        console.log("Right arrow pressed")  
+    }
+    else{
+        horizontalPivot = 0
+    }
+
+    /* Controls camera's vertical/horizontal transform */
+    if (keysBeingPressed['w']) {        // forward in direction camera is facing
+        zMove = zMoveRate
+        console.log("w arrow pressed")
+    }
+    else if (keysBeingPressed['s']) {   // backward from direction camera is facing
+        zMove = -zMoveRate
+        console.log("s arrow pressed")
+    }
+    else{
+        zMove = 0
+    }
+    
+    if (keysBeingPressed['a']) {        // leftward without changing direction camera is facing
+        xMove = xMoveRate
+        console.log("a arrow pressed")
+    }
+    else if (keysBeingPressed['d']) {   // rightward without changing direction camera is facing
+        xMove = -xMoveRate
+        console.log("d arrow pressed")
+    }
+    else{
+        xMove = 0
+    }
+
+    // console.log("xMove, zMove: ", xMove, zMove)
+
+    let transform = m4mul(m4rotY(horizontalPivot), m4rotX(verticalPitch), m4trans(xMove,0,zMove))
+    currView = m4mul(transform, currView)
+
+    gl.uniformMatrix4fv(program.uniforms.mv, false, currView)
+    gl.uniformMatrix4fv(program.uniforms.p, false, p)
+    
+    gl.drawElements(geom.mode, geom.count, geom.type, 0)
+}
+
+/** Compute any time-varying or animated aspects of the scene */
+function tick(milliseconds) {
+    let seconds = milliseconds / 1000;
+
+    draw(seconds)
+    requestAnimationFrame(tick)
+}
+
+/** Resizes the canvas to completely fill the screen */
+function fillScreen() {
+    let canvas = document.querySelector('canvas')
+    document.body.style.margin = '0'
+    canvas.style.width = '100vw'
+    canvas.style.height = '100vh'
+    canvas.width = canvas.clientWidth
+    canvas.height = canvas.clientHeight
+    canvas.style.width = ''
+    canvas.style.height = ''
+    if (window.gl) {
+        gl.viewport(0,0, canvas.width, canvas.height)
+        window.p = m4perspNegZ(0.1, 10, 0.5, canvas.width, canvas.height)
+    }
+}
+var gridsize
+
+/** Compile, link, set up geometry */
+window.addEventListener('load', async (event) => {
+    window.gl = document.querySelector('canvas').getContext('webgl2',
+        // optional configuration object: see https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext
+        {antialias: false, depth:true, preserveDrawingBuffer:true}
+    )
+    
+    let vs = document.querySelector('#vert').textContent.trim()
+    let fs = document.querySelector('#frag').textContent.trim()
+    window.program = compileShader(vs,fs)
+    gl.enable(gl.DEPTH_TEST)
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    
+
+    gridsize = 50
+    const faults = 250
+    
+    surface = generateTerrain(faults)
+    
+    window.geom = setupGeomery(surface)
+    
+    fillScreen()
+    window.addEventListener('resize', fillScreen)
+
+    requestAnimationFrame(tick)    
+        
+
+        
+})
+
+window.keysBeingPressed = {}
+window.addEventListener('keydown', event => keysBeingPressed[event.key] = true)
+window.addEventListener('keyup', event => keysBeingPressed[event.key] = false)
+
+
+
+</script>
+<style>
+    body {
+        margin: 0; border: none; padding: 0;
+        display: flex; flex-direction: column;
+        width: 100%; height: 100vh;
+    }
+    .controls {
+        flex: 0 0 auto;
+    }
+    .controls > * { margin: 1em; }
+    .display {
+        flex-grow: 1;
+        line-height: 0rem;
+    }
+    </style>
+</head>
+<body>
+<div class="display">
+    <canvas width="300" height="300"></canvas>
+</div>
+</body>
+</html>

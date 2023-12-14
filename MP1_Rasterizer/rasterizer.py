@@ -11,8 +11,8 @@ def dda_setup(a, b, dimension):
 
     if(a[d] == b[d]):
         if(dimension == "x"):
-            return [0,0,0,0,0,0,0,0]
-        return [0,0,0,0,0,0,0,0]
+            return [0,0,0,0,0,0,0,0,0,0]
+        return [0,0,0,0,0,0,0,0,0,0]
     
     elif(a[d] > b[d]): # swap a and b
         # print("a, b:", a,b)
@@ -24,7 +24,7 @@ def dda_setup(a, b, dimension):
 
     pointDiff = []
 
-    for i in range(8):
+    for i in range(10):
         pointDiff += [b[i] - a[i]]
 
 
@@ -59,7 +59,7 @@ def dda_firstPoint(a, b, dimension):
     # print("o, s:", o, s)
     e = math.ceil(a[d]) - a[d] # calculates distance between a_d and next integer
     # print("e: ", e)
-    for i in range(8):
+    for i in range(10):
         o.append(s[i]*e) # o is of distance e and obtains the direction of s vector
         p += [a[i] + o[i]]
 
@@ -87,7 +87,7 @@ def dda_allPoints(a, b, dimension):
     while p[d] < b[d]:
         all_p.append(p.copy())
        
-        for i in range(8):
+        for i in range(10):
             p[i] += s[i]
             # print("p[i]: ", p[i], "s[i]: ", s[i])
     # print("all_p,dimension", all_p,dimension)
@@ -132,7 +132,7 @@ def scanline_algo(x, y, z):
     while p[1] < m[1]:
         points += dda_allPoints(p, p_long, "x")
         # print("points: ", points)
-        for i in range(8):
+        for i in range(10):
             p[i] += s[i]
             p_long[i] += s_long[i]
 
@@ -145,7 +145,7 @@ def scanline_algo(x, y, z):
     while p[1] < b[1]:
         points += dda_allPoints(p, p_long, "x")
         
-        for i in range(8):
+        for i in range(10):
             p[i] += s[i]
             p_long[i] += s_long[i]
 
@@ -227,15 +227,48 @@ with open(sys.argv[1], 'r') as filename:
     fileContents = filename.readlines()
     for line in fileContents:
         if line.find(".png") != -1: # check to see if .png is in this line
-            for word in line.split():
-                if ".png" in word:  # check to see if word in line ends with .png
-                    pngName = word
-                    line = line.replace(word, '')
-            line = line.replace("png", '')
-            width, height = (int(i) for i in line.split())
-            image = Image.new("RGBA", (width, height), (0,0,0,0))
-            # print(width, height)
+            if line.find("texture ") != -1:
+                texture = True
+                for word in line.split():
+                    if ".png" in word:  # check to see if word in line ends with .png
+                        texturePNG = Image.open(word)
+                        textureWidth, textureHeight = texturePNG.size
+                        # texturePNG.show()
+                        # print("texturePNG: ", word)
+                        line = line.replace(word, '')
+                line = line.replace("png", '')
+            else:
+                for word in line.split():
+                    if ".png" in word:  # check to see if word in line ends with .png
+                        pngName = word
+                        line = line.replace(word, '')
+                line = line.replace("png", '')
+                width, height = (int(i) for i in line.split())
+                image = Image.new("RGBA", (width, height), (0,0,0,0))
+                # print(width, height)
+        
+        elif line.find("texcoord") != -1:
+            texelCoords = []
+            floatsString = line.split()[2:]
             
+            floats = [float(num) for num in floatsString]
+            print("floats: ", floats)
+
+            for i in range(0, len(floats), 2):
+                texel = [floats[i], floats[i+1]] 
+                texelCoords.append(texel)
+            print("texelCoords: ", texelCoords) 
+            #     coordRGBA = list(texturePNG.getpixel(texel))  # get the rgba value at the texel coord in texture image
+
+            #     for i in range(len(coordRGBA)): # convert the rgba values to be between 0 and 1
+            #         coordRGBA[i] /= 255
+                
+            #     if len(coordRGBA) == 3:
+            #         coordRGBA += [1.0]
+                
+            #     colors.append(coordRGBA)
+            # print("colors", colors)
+
         elif line.find("depth") != -1:    
             depth = True
         
@@ -264,10 +297,6 @@ with open(sys.argv[1], 'r') as filename:
                 uniformRow = []
 
             print("uniformMatrix: ", uniformMatrix)
-
-        elif line.find("texture") != -1:
-            texture = True
-            positions = []
 
         elif line.startswith("position"):
             positions = []
@@ -322,7 +351,10 @@ with open(sys.argv[1], 'r') as filename:
             
             for i in range(0, count, 3):
                 positionsToDraw = [positions[first + i], positions[first + i + 1], positions[first + i + 2]]
-                colorsToDraw = [colors[first + i], colors[first + i + 1], colors[first + i + 2]]
+                if texture:
+                    texelsToDraw = [texelCoords[first + i], texelCoords[first + i + 1], texelCoords[first + i + 2]]
+                else:
+                    colorsToDraw = [colors[first + i], colors[first + i + 1], colors[first + i + 2]]
 
                 pointsToDraw = []
                 pixelsToDraw = []
@@ -349,9 +381,9 @@ with open(sys.argv[1], 'r') as filename:
 
                     pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z/w, 1/w])
 
-                print("positionsToDraw: ", positionsToDraw)
-                print("pointsToDraw: ", pointsToDraw)
-                print("colorsToDraw: ", colorsToDraw, " original w: ", w)
+                # print("positionsToDraw: ", positionsToDraw)
+                # print("pointsToDraw: ", pointsToDraw)
+                # print("colorsToDraw: ", colorsToDraw, " original w: ", w)
 
                 a = pointsToDraw[0]
                 b = pointsToDraw[1]
@@ -453,12 +485,17 @@ with open(sys.argv[1], 'r') as filename:
             offset = int(line.split()[2])
 
             positionsToDraw = []
+            texelsToDraw = []
             colorsToDraw = []
 
             for i in range(0, count, 3):
                 positionsToDraw = [positions[elements[offset + i]], positions[elements[offset + i + 1]], positions[elements[offset + i + 2]]]
-                colorsToDraw = [colors[elements[offset + i]], colors[elements[offset + i + 1]], colors[elements[offset + i + 2]]]
+                if texture:
+                    texelsToDraw = [texelCoords[elements[offset + i]], texelCoords[elements[offset + i + 1]], texelCoords[elements[offset + i + 2]]]
+                else:
+                    colorsToDraw = [colors[elements[offset + i]], colors[elements[offset + i + 1]], colors[elements[offset + i + 2]]]
 
+                print("texelsToDraw: ", texelsToDraw)
                 pointsToDraw = []
                 pixelsToDraw = []
 
@@ -484,9 +521,9 @@ with open(sys.argv[1], 'r') as filename:
 
                     pointsToDraw.append([(x/w+1)*width/2, (y/w+1)*height/2, z/w, 1/w])
 
-                print("positionsToDraw: ", positionsToDraw)
-                print("pointsToDraw: ", pointsToDraw)
-                print("colorsToDraw: ", colorsToDraw, " original w: ", w)
+                # print("positionsToDraw: ", positionsToDraw)
+                # print("pointsToDraw: ", pointsToDraw)
+                # print("colorsToDraw: ", colorsToDraw, " original w: ", w)
 
                 a = pointsToDraw[0]
                 b = pointsToDraw[1]
@@ -496,38 +533,102 @@ with open(sys.argv[1], 'r') as filename:
                 b_rgba = []
                 c_rgba = []
 
+                a_st = []
+                b_st = []
+                c_st = []
+
                 if hyp:
-                    for i in range(3): # divides each point's rgb value by its respective w
-                        a_rgba += [colorsToDraw[0][i]/(1/a[3])] 
-                        b_rgba += [colorsToDraw[1][i]/(1/b[3])]
-                        c_rgba += [colorsToDraw[2][i]/(1/c[3])]
-                    a_rgba += [colorsToDraw[0][3]]
-                    b_rgba += [colorsToDraw[1][3]]
-                    c_rgba += [colorsToDraw[2][3]]
+                    if texture:
+                        for i in range(2):
+                            a_st += [texelsToDraw[0][i]/(1/a[3])]
+                            b_st += [texelsToDraw[1][i]/(1/b[3])]
+                            c_st += [texelsToDraw[2][i]/(1/c[3])]
+                        a_rgba = [0,0,0,0]
+                        b_rgba = [0,0,0,0]
+                        c_rgba = [0,0,0,0]
+                    else:
+                        for i in range(3): # divides each point's rgb value by its respective w
+                            a_rgba += [colorsToDraw[0][i]/(1/a[3])] 
+                            b_rgba += [colorsToDraw[1][i]/(1/b[3])]
+                            c_rgba += [colorsToDraw[2][i]/(1/c[3])]
+                        a_rgba += [colorsToDraw[0][3]]
+                        b_rgba += [colorsToDraw[1][3]]
+                        c_rgba += [colorsToDraw[2][3]]
+
+                        a_st = [0,0]
+                        b_st = [0,0]
+                        c_st = [0,0]
 
                 else:
-                    a_rgba = colorsToDraw[0]
-                    b_rgba = colorsToDraw[1]
-                    c_rgba = colorsToDraw[2]
+                    if texture:
+                        a_st += texelsToDraw[0]
+                        b_st += texelsToDraw[1]
+                        c_st += texelsToDraw[2]
 
-                a += a_rgba
-                b += b_rgba
-                c += c_rgba
+                        a_rgba = [0,0,0,0]
+                        b_rgba = [0,0,0,0]
+                        c_rgba = [0,0,0,0]
+                    else:
+                        a_rgba = colorsToDraw[0]
+                        b_rgba = colorsToDraw[1]
+                        c_rgba = colorsToDraw[2]
+
+                        a_st = [0,0]
+                        b_st = [0,0]
+                        c_st = [0,0]
+
+                a += a_rgba + a_st
+                b += b_rgba + b_st
+                c += c_rgba + c_st
 
                 # print("new colorsToDraw: ", a_rgba, b_rgba, c_rgba)
 
                 pixelsToDraw += scanline_algo(a, b, c)
+                # print("all pixelsToDraw: ", pixelsToDraw)
 
                 for pixel in pixelsToDraw:
                     x = pixel[0]
                     y = pixel[1]
                     z = pixel[2]
                     w = pixel[3]
+
+                    s = pixel[8]
+                    t = pixel[9]
+
+                    # print("s,t: ", s,t)
+                    if texture:
+                        s /= w
+                        t /= w
+
+                        # handle wrap coordinates
+                        while s > 1:
+                            s -= 1
+                        while s < 0:
+                            s += 1
+
+                        while t > 1:
+                            t -= 1
+                        while t < 0:
+                            t += 1
+
+                        texel = (s*textureWidth, t*textureHeight) # need to scale texel coord to texture png dimensions
+                        # print("textureWidth, textureHeight, texel: ", textureWidth, textureHeight, texel)
+                        textureRGBA = list(texturePNG.getpixel(texel))  # get the rgba value at the texel coord in texture image
+                        # print("textureRGBA: ", textureRGBA)
+                        for i in range(len(textureRGBA)):
+                            textureRGBA[i] /= 255.0
+                        if len(textureRGBA) == 3:
+                            textureRGBA += [1.0]
+                        for i in range(4):
+                            pixel[i+4] = textureRGBA[i]
+                        
+                        pixel[4:7] = srgbToLinear(pixel[4:7])
                     # print("new w: ", w)
                     # print("rgb without w division: ", pixel[4:8])
-                    for i in range(4,7):
-                        if hyp:
-                            pixel[i] /= w # divide rgb by interpolated 1/w
+                    else:
+                        for i in range(4,7):
+                            if hyp:
+                                pixel[i] /= w # divide rgb by interpolated 1/w
 
                     if sRGB:
                         pixel[4:7] = linearToSRGB(pixel[4:7])
@@ -539,8 +640,8 @@ with open(sys.argv[1], 'r') as filename:
 
                         if(existingPos):
                             if(existingPos[0][2] >= z):
-                                d_rgba = srgbToLinear(existingPos[0][4:])
-                                s_rgba = srgbToLinear(pixel[4:])
+                                d_rgba = srgbToLinear(existingPos[0][4:8])
+                                s_rgba = srgbToLinear(pixel[4:8])
                                 new_rgba = []
 
                                 new_a = s_rgba[3] + d_rgba[3]*(1 - s_rgba[3])
