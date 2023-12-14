@@ -9,16 +9,31 @@
 
 
 <!-- The source code of a vertex shader directly in the HTML. The 'type=' command can have any value except "javascript" and just tells the browser not to try to run the code as javascript. -->
-<script id="vert" type="glsl">  
+<script id="nonTexture_vert" type="glsl">  
 #version 300 es
 layout(location=0) in vec4 position;
 layout(location=1) in vec3 normal;
 uniform mat4 mv;
 uniform mat4 p;
 out vec3 vnormal;
+
 void main() {
     gl_Position = p * mv * position;
     vnormal = mat3(mv) * normal;
+}
+</script>
+
+<script id="texture_vert" type="glsl">  
+#version 300 es
+layout(location=0) in vec4 position;
+layout(location=1) in vec2 aTexCoord;
+uniform mat4 mv;
+uniform mat4 p;
+out vec2 vTexCoord;
+
+void main() {
+    gl_Position = p * mv * position;
+    vTexCoord = aTexCoord;
 }
 </script>
 
@@ -46,26 +61,17 @@ void main() {
 </script>
 
 <script id="texture_frag" type="glsl">
-    #version 300 es
-    precision highp float;
-    uniform sampler2D imageTexture;
-    
-    uniform vec3 lightdir;
-    uniform vec3 lightcolor;
-    uniform vec3 halfway;
-    
-    out vec4 fragColor;
-    in vec3 vnormal;
-    void main() {
-        vec3 n = normalize(vnormal);
-        float lambert = max(dot(n, lightdir), 0.0);
-        float blinn = pow(max(dot(n, halfway), 0.0), 50.0);
-        fragColor = vec4(
-            color.rgb*(lightcolor*lambert)
-            + lightcolor*blinn
-            , color.a);
-    }
-    </script>
+#version 300 es
+precision highp float;
+
+uniform sampler2D image;
+in vec2 vTexCoord;
+out vec4 color;
+
+void main() {
+    color = texture(image, vTexCoord)
+}
+</script>
 
 
 <!-- Code I don't expect to change. -->
@@ -338,39 +344,27 @@ function addNormals(geom) {
     for(let i=0; i<geom.attributes[0].length; i+=1) {
         if(i < gridsize){                               // vertex is at top edge of terrain
             var n = geom.attributes[0][i]
-            var nw = geom.attributes[0][i]
-            var ne = geom.attributes[0][i]
         }
         else{
             var n = geom.attributes[0][i-gridsize]
-            var nw = geom.attributes[0][i-gridsize-1]
-            var ne = geom.attributes[0][i-gridsize+1]
         }
 
         if(i % gridsize == 0){                          // vertex is at left edge of terrain
             var w = geom.attributes[0][i]
-            var nw = geom.attributes[0][i]
-            var sw = geom.attributes[0][i]
         }
         else{
             var w = geom.attributes[0][i-1]
-            var sw = geom.attributes[0][i-1+gridsize]
         }
 
         if(i >= geom.attributes[0].length-gridsize){    // vertex is at bottom edge of terrain
             var s = geom.attributes[0][i]
-            var sw = geom.attributes[0][i]
-            var se = geom.attributes[0][i]
         }
         else{
             var s = geom.attributes[0][i+gridsize]
-            var se = geom.attributes[0][i+gridsize+1]
         }
 
         if(i % gridsize == gridsize - 1){               // vertex is at right edge of terrain
             var e = geom.attributes[0][i]
-            var ne = geom.attributes[0][i]
-            var se = geom.attributes[0][i]
         }
         else{
             var e = geom.attributes[0][i+1]
@@ -379,18 +373,6 @@ function addNormals(geom) {
         // console.log("nw,n,ne,w,e,sw,s,se: ", nw,n,ne,w,e,sw,s,se)
 
         let normals = cross(sub(n,s), sub(w,e))
-
-        // var cross1 = cross(sub(n,s), sub(w,e))
-        // for(let i=0; i<cross1.length; i++){
-        //     cross1[i] *= 2
-        // }
-        // let cross2 = cross(sub(ne,sw), sub(nw,se))
-
-        // var normals = add(cross1, cross2)
-        // for(let i=0; i<normals.length; i++){
-        //     normals[i] /=3
-        // }
-        // console.log("normals: ", normals)
 
         geom.attributes[ni].push(normals)
     }
@@ -431,10 +413,26 @@ function generateTexture(){
             TerrainColor = [1,0,1,0]
         })
         img.addEventListener('load', (event) => {
-            let slot = 0
+            isTexture = true
+            
             let texture = gl.createTexture()
-            gl.activeTexture(gl.TEXTURE0 + slot)
-            gl.bindTexture(gl.TEXTURE_2d, texture)
+            gl.activeTexture(gl.TEXTURE0)
+            gl.bindTexture(gl.TEXTURE_2D, texture)
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texImage2D(
+                gl.TEXTURE_2D, // destination slot
+                0, // the mipmap level this data provides; almost always 0
+                gl.RGBA, // how to store it in graphics memory
+                gl.RGBA, // how it is stored in the image object
+                gl.UNSIGNED_BYTE, // size of a single pixel-color in HTML
+                img, // source data
+            );
+            gl.generateMipmap(gl.TEXTURE_2D) // lets you use a mipmapping min filter
         })
     }
 }
@@ -447,13 +445,18 @@ function draw(seconds) {
 
     gl.bindVertexArray(geom.vao)
 
-
-    let ldir = normalize([1,1,1])
-    let h = normalize(add(ldir, [0,0,1]))
-    gl.uniform4fv(program.uniforms.color, TerrainColor)
-    gl.uniform3fv(program.uniforms.lightcolor, [1,1,1])  
-    gl.uniform3fv(program.uniforms.lightdir, ldir)
-    gl.uniform3fv(program.uniforms.halfway, h)
+    if(isTexture){
+        gl.uniform1i(program.uniforms.image, 0)
+    }
+    else{
+        let ldir = normalize([1,1,1])
+        let h = normalize(add(ldir, [0,0,1]))
+        gl.uniform4fv(program.uniforms.color, TerrainColor)
+        gl.uniform3fv(program.uniforms.lightcolor, [1,1,1])  
+        gl.uniform3fv(program.uniforms.lightdir, ldir)
+        gl.uniform3fv(program.uniforms.halfway, h)    
+    }
+    
 
     let m = m4mul(m4rotY(seconds))
     let v = m4view([4,4,4], [0,0,0], [0,1,0])   
@@ -497,33 +500,38 @@ window.addEventListener('load', async (event) => {
         {antialias: false, depth:true, preserveDrawingBuffer:true}
     )
     
-    let vs = document.querySelector('#vert').textContent.trim()
+    let texture_vs = document.querySelector('#texture_vert').textContent.trim()
+    let nonTexture_vs = document.querySelector('#nonTexture_vert').textContent.trim()
 
     let texture_fs = document.querySelector('#texture_frag').textContent.trim()
     let nonTexture_fs = document.querySelector("#nonTexture_frag").textContent.trim()
 
-    window.program = compileShader(vs, nonTexture_fs)
+    if(isTexture){
+        window.program = compileShader(texture_vs, texture_fs) 
+    }
+    else{
+        window.program = compileShader(nonTexture_vs, nonTexture_fs)    
+    }
+    
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-    
-    flag = 0
+
+    gridsize = Number(document.querySelector('#gridsize').value) || 2
+    faults = Number(document.querySelector('#faults').value) || 0
+
+    surface = generateTerrain(faults)   
+    window.geom = setupGeomery(surface)
+    fillScreen()
+    window.addEventListener('resize', fillScreen)
+    requestAnimationFrame(tick)    
 
     document.querySelector('#submit').addEventListener('click', event => {
         gridsize = Number(document.querySelector('#gridsize').value) || 2
-        const faults = Number(document.querySelector('#faults').value) || 0
+        faults = Number(document.querySelector('#faults').value) || 0
 
         surface = generateTerrain(faults)   
         window.geom = setupGeomery(surface)
-        
-        fillScreen()
-        window.addEventListener('resize', fillScreen)
-
-        if(flag == 0){
-            requestAnimationFrame(tick)    
-        }
-
-        flag = 1
         
     })
 
@@ -532,10 +540,10 @@ window.addEventListener('load', async (event) => {
         generateTexture()
 
         if(isTexture){
-            window.program = compileShader(vs, texture_fs)
+            window.program = compileShader(texture_vs, texture_fs)
         }
         else{
-            window.program = compileShader(vs, nonTexture_fs)
+            window.program = compileShader(nonTexture_vs, nonTexture_fs)
         }
     })
 })
