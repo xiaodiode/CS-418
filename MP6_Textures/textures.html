@@ -66,10 +66,10 @@ precision highp float;
 
 uniform sampler2D image;
 in vec2 vTexCoord;
-out vec4 color;
+out vec4 fragColor;
 
 void main() {
-    color = texture(image, vTexCoord)
+    fragColor = texture(image, vTexCoord)
 }
 </script>
 
@@ -384,6 +384,7 @@ function addNormals(geom) {
 }
 
 var red, green, blue, alpha
+var img
 
 function generateTexture(){
     console.log("material: ", material)
@@ -392,6 +393,7 @@ function generateTexture(){
         TerrainColor = [1,1,1,0.3]
     }
     else if(/^#[0-9a-f]{8}$/i.test(material)){   // checks whether first character of input is # to indicate hexadecimal value
+        isTexture = false
         red = Number('0x' + material.substr(1,2))/255.0
         green = Number('0x' + material.substr(3,2))/255.0
         blue = Number('0x' + material.substr(5,2))/255.0
@@ -404,7 +406,7 @@ function generateTexture(){
     else if(/[.](jpg|png)$/.test(material)){
         console.log("png inputted")
 
-        let img = new Image()
+        img = new Image()
         img.crossOrigin = 'anonymous'
         img.src = material
         img.addEventListener('error', (event) => {
@@ -446,7 +448,7 @@ function draw(seconds) {
     gl.bindVertexArray(geom.vao)
 
     if(isTexture){
-        gl.uniform1i(program.uniforms.image, 0)
+        gl.uniform1i(gl.getUniformLocation(program, "image"), 0)
     }
     else{
         let ldir = normalize([1,1,1])
@@ -500,18 +502,18 @@ window.addEventListener('load', async (event) => {
         {antialias: false, depth:true, preserveDrawingBuffer:true}
     )
     
-    let texture_vs = document.querySelector('#texture_vert').textContent.trim()
-    let nonTexture_vs = document.querySelector('#nonTexture_vert').textContent.trim()
+    var texture_vs = document.querySelector('#texture_vert').textContent.trim()
+    var nonTexture_vs = document.querySelector('#nonTexture_vert').textContent.trim()
 
-    let texture_fs = document.querySelector('#texture_frag').textContent.trim()
-    let nonTexture_fs = document.querySelector("#nonTexture_frag").textContent.trim()
+    var texture_fs = document.querySelector('#texture_frag').textContent.trim()
+    var nonTexture_fs = document.querySelector("#nonTexture_frag").textContent.trim()
 
-    if(isTexture){
-        window.program = compileShader(texture_vs, texture_fs) 
-    }
-    else{
+    // if(isTexture){
+    //     window.program = compileShader(texture_vs, texture_fs) 
+    // }
+    // else{
         window.program = compileShader(nonTexture_vs, nonTexture_fs)    
-    }
+    // }
     
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.BLEND)
@@ -537,13 +539,61 @@ window.addEventListener('load', async (event) => {
 
     document.querySelector("#material").addEventListener('change', event => {
         material = String(document.querySelector('#material').value)
-        generateTexture()
+        // generateTexture()
 
-        if(isTexture){
-            window.program = compileShader(texture_vs, texture_fs)
+        if(material == ''){
+            console.log("blank")
+            TerrainColor = [1,1,1,0.3]
         }
-        else{
+        else if(/^#[0-9a-f]{8}$/i.test(material)){   // checks whether first character of input is # to indicate hexadecimal value
             window.program = compileShader(nonTexture_vs, nonTexture_fs)
+            isTexture = false
+            red = Number('0x' + material.substr(1,2))/255.0
+            green = Number('0x' + material.substr(3,2))/255.0
+            blue = Number('0x' + material.substr(5,2))/255.0
+            alpha = Number('0x' + material.substr(7,2))/255.0
+
+            TerrainColor = [red, green, blue, alpha]
+
+            
+
+            console.log("rgba values: ", red,green,blue,alpha)
+        }
+        else if(/[.](jpg|png)$/.test(material)){
+            window.program = compileShader(texture_vs, texture_fs)
+            console.log("png inputted")
+
+            img = new Image()
+            img.crossOrigin = 'anonymous'
+            img.src = material
+            img.addEventListener('error', (event) => {
+                console.log("Image failed to load")
+                isTexture = false
+                TerrainColor = [1,0,1,0]
+            })
+            img.addEventListener('load', (event) => {
+                
+                isTexture = true
+                
+                let texture = gl.createTexture()
+                gl.activeTexture(gl.TEXTURE0)
+                gl.bindTexture(gl.TEXTURE_2D, texture)
+
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texImage2D(
+                    gl.TEXTURE_2D, // destination slot
+                    0, // the mipmap level this data provides; almost always 0
+                    gl.RGBA, // how to store it in graphics memory
+                    gl.RGBA, // how it is stored in the image object
+                    gl.UNSIGNED_BYTE, // size of a single pixel-color in HTML
+                    img, // source data
+                );
+                gl.generateMipmap(gl.TEXTURE_2D) // lets you use a mipmapping min filter
+            })
         }
     })
 })

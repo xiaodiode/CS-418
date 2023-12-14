@@ -44,7 +44,9 @@ function compileShader(vs_source, fs_source) {
     return program
 }
 
-var buf // buffer that will store the changing data
+var buf
+var indexBuffer
+
 var indices
 
 /**
@@ -64,8 +66,8 @@ function setupGeomery(geom) {
     var flag = 0
 
     for(let i=0; i<geom.attributes.length; i+=1) {
-        buf = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+        // buf = gl.createBuffer()
+        // gl.bindBuffer(gl.ARRAY_BUFFER, buf)
         let f32 = new Float32Array(geom.attributes[i].flat())
         
         if(flag == 0){
@@ -81,8 +83,8 @@ function setupGeomery(geom) {
     }
 
     indices = new Uint16Array(geom.triangles.flat())
-    buf = gl.createBuffer()
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf)
+    // buf = gl.createBuffer()
+    // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf)
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW)
 
     return {
@@ -111,8 +113,9 @@ function draw(milliseconds) {
      * Float32Array
      */ 
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf)
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW)
+    // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buf)
+    // gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW)
+    window.geom = setupGeomery(data)
 
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 
@@ -124,7 +127,7 @@ function draw(milliseconds) {
  * @param {*} milliseconds 
  */
 function tick(milliseconds) {
-    buf = gl.createBuffer()
+    // buf = gl.createBuffer()
 
     window.geom = setupGeomery(data)
     draw(milliseconds)
@@ -136,6 +139,13 @@ window.addEventListener('load', async (event) => {
     let vs = await fetch('vertex_shader.glsl').then(res => res.text())
     let fs = await fetch('fragment_shader.glsl').then(res => res.text())
     data = await fetch('geometry.json').then(r=>r.json())
+
+    buf = gl.createBuffer()// buffer that will store the changing data
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf)
+
+    indexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+
     window.program = compileShader(vs,fs)
     tick(0)
 })

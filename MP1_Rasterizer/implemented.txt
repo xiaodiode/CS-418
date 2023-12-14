@@ -6,3 +6,4 @@ matrix
 position23
 alpha
 textures
+decal

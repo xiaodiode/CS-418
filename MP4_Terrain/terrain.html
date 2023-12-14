@@ -15,10 +15,13 @@ layout(location=0) in vec4 position;
 layout(location=1) in vec3 normal;
 uniform mat4 mv;
 uniform mat4 p;
+uniform vec3 lightdir;
 out vec3 vnormal;
+out vec3 vlightdir;
 void main() {
     gl_Position = p * mv * position;
     vnormal = mat3(mv) * normal;
+    vlightdir = mat3(mv) * lightdir;
 }
 </script>
 
@@ -28,7 +31,7 @@ void main() {
 precision highp float;
 uniform vec4 color;
 
-uniform vec3 lightdir;
+in vec3 vlightdir;
 uniform vec3 lightcolor;
 uniform vec3 halfway;
 
@@ -36,7 +39,7 @@ out vec4 fragColor;
 in vec3 vnormal;
 void main() {
     vec3 n = normalize(vnormal);
-    float lambert = max(dot(n, lightdir), 0.0);
+    float lambert = max(dot(n, normalize(vlightdir)), 0.0);
     float blinn = pow(max(dot(n, halfway), 0.0), 50.0);
     fragColor = vec4(
         color.rgb*(lightcolor*lambert)
@@ -439,6 +442,8 @@ function draw(seconds) {
 
     gl.bindVertexArray(geom.vao)
 
+    let m = m4mul(m4rotY(seconds))
+    let v = m4view([4,4,4], [0,0,0], [0,1,0]) 
 
     let ldir = normalize([1,1,1])
     let h = normalize(add(ldir, [0,0,1]))
@@ -447,8 +452,9 @@ function draw(seconds) {
     gl.uniform3fv(program.uniforms.lightdir, ldir)
     gl.uniform3fv(program.uniforms.halfway, h)
 
-    let m = m4mul(m4rotY(seconds))
-    let v = m4view([4,4,4], [0,0,0], [0,1,0])   
+      
+    // let lightView = m4view(ldir, [0,0,0], [0,1,0])
+    // gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(lightView,m))
     gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(v,m))
     gl.uniformMatrix4fv(program.uniforms.p, false, p)
     
