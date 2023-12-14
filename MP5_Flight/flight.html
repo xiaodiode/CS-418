@@ -317,39 +317,27 @@ function addNormals(geom) {
     for(let i=0; i<geom.attributes[0].length; i+=1) {
         if(i < gridsize){                               // vertex is at top edge of terrain
             var n = geom.attributes[0][i]
-            var nw = geom.attributes[0][i]
-            var ne = geom.attributes[0][i]
         }
         else{
             var n = geom.attributes[0][i-gridsize]
-            var nw = geom.attributes[0][i-gridsize-1]
-            var ne = geom.attributes[0][i-gridsize+1]
         }
 
         if(i % gridsize == 0){                          // vertex is at left edge of terrain
             var w = geom.attributes[0][i]
-            var nw = geom.attributes[0][i]
-            var sw = geom.attributes[0][i]
         }
         else{
             var w = geom.attributes[0][i-1]
-            var sw = geom.attributes[0][i-1+gridsize]
         }
 
         if(i >= geom.attributes[0].length-gridsize){    // vertex is at bottom edge of terrain
             var s = geom.attributes[0][i]
-            var sw = geom.attributes[0][i]
-            var se = geom.attributes[0][i]
         }
         else{
             var s = geom.attributes[0][i+gridsize]
-            var se = geom.attributes[0][i+gridsize+1]
         }
 
         if(i % gridsize == gridsize - 1){               // vertex is at right edge of terrain
             var e = geom.attributes[0][i]
-            var ne = geom.attributes[0][i]
-            var se = geom.attributes[0][i]
         }
         else{
             var e = geom.attributes[0][i+1]
@@ -358,18 +346,6 @@ function addNormals(geom) {
         // console.log("nw,n,ne,w,e,sw,s,se: ", nw,n,ne,w,e,sw,s,se)
 
         let normals = cross(sub(n,s), sub(w,e))
-
-        // var cross1 = cross(sub(n,s), sub(w,e))
-        // for(let i=0; i<cross1.length; i++){
-        //     cross1[i] *= 2
-        // }
-        // let cross2 = cross(sub(ne,sw), sub(nw,se))
-
-        // var normals = add(cross1, cross2)
-        // for(let i=0; i<normals.length; i++){
-        //     normals[i] /=3
-        // }
-        // console.log("normals: ", normals)
 
         geom.attributes[ni].push(normals)
     }
@@ -380,14 +356,24 @@ function addNormals(geom) {
 
 }
 
+var vertPitchRate = 0.004    // rate of camera's vertical pitch 
+var horPivotRate = 0.004     // rate of camera's horizontal pivot 
+var verticalPitch = 0       // up/down pitch movemnt
+var horizontalPivot = 0     // left/right pivot movement
+
+var xMoveRate = 0.02       // rate of camera horizontal movement
+var zMoveRate = 0.04        // rate of camera depth movement
+var xMove = 0               // left/right delta movement
+var zMove = 0               // forward/backward delta movement
+
+var currView = m4view([4,4,4], [0,0,0], [0,1,0])
+
 /** Draw one frame */
 function draw(seconds) {
-    // gl.clearColor(...IlliniBlue)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
     gl.useProgram(program)
 
     gl.bindVertexArray(geom.vao)
-
 
     let ldir = normalize([1,1,1])
     let h = normalize(add(ldir, [0,0,1]))
@@ -396,97 +382,72 @@ function draw(seconds) {
     gl.uniform3fv(program.uniforms.lightdir, ldir)
     gl.uniform3fv(program.uniforms.halfway, h)
 
-    var r
 
-    var pitchRate = 0.01
-    var yPitch = 0  // up/down movemnt
-
-    var moveRate = 0.2
-    var xMove = 0   // left/right movement
-    var zMove = 0  // forward/backward movement
-
-
-    if (keysBeingPressed['ArrowUp']) { 
-        yPitch += pitchRate
+    /* Controls camera's rotation */
+    if (keysBeingPressed['ArrowUp']) {  // pitch the camera to look closer to the sky
+        verticalPitch = -vertPitchRate
         console.log("Up arrow pressed")
     }
-    else if (keysBeingPressed['ArrowDown']) { 
-        yPitch -= pitchRate
+    else if (keysBeingPressed['ArrowDown']) { // pitch the camera to look closer to the ground
+        verticalPitch = vertPitchRate
         console.log("Down arrow pressed")
     }
+    else{
+        verticalPitch = 0
+    }
 
-    else if (keysBeingPressed['ArrowLeft']) { 
-
+    if (keysBeingPressed['ArrowLeft']) { // pivot along the up-down axis to look to the left
+        horizontalPivot = -horPivotRate
         console.log("Left arrow pressed")
     }
-    else if (keysBeingPressed['ArrowRight']) { 
-        console.log("Right arrow pressed")
+    else if (keysBeingPressed['ArrowRight']) { // pivot along the up-down axis to look to the right
+        horizontalPivot = horPivotRate
+        console.log("Right arrow pressed")  
+    }
+    else{
+        horizontalPivot = 0
     }
 
-    else if (keysBeingPressed['w']) { 
+    /* Controls camera's vertical/horizontal transform */
+    if (keysBeingPressed['w']) {        // forward in direction camera is facing
+        zMove = zMoveRate
         console.log("w arrow pressed")
     }
-    else if (keysBeingPressed['s']) { 
+    else if (keysBeingPressed['s']) {   // backward from direction camera is facing
+        zMove = -zMoveRate
         console.log("s arrow pressed")
     }
-    
-    else if (keysBeingPressed['a']) { 
-        console.log("a arrow pressed")
-    }
-    else if (keysBeingPressed['d']) { 
-        console.log("d arrow pressed")
-    }
-
-    else{ // no keys pressed, reset pitch and move
-        yPitch = 0
-
-        xMove = 0
+    else{
         zMove = 0
     }
+    
+    if (keysBeingPressed['a']) {        // leftward without changing direction camera is facing
+        xMove = xMoveRate
+        console.log("a arrow pressed")
+    }
+    else if (keysBeingPressed['d']) {   // rightward without changing direction camera is facing
+        xMove = -xMoveRate
+        console.log("d arrow pressed")
+    }
+    else{
+        xMove = 0
+    }
 
-    // let m = m4mul(m4rotY(seconds))
-    let v = m4view([4,4,4], [0,0,0], [0,1,0])
-    gl.uniformMatrix4fv(program.uniforms.mv, false, m4mul(r,v))
+    // console.log("xMove, zMove: ", xMove, zMove)
+
+    let transform = m4mul(m4rotY(horizontalPivot), m4rotX(verticalPitch), m4trans(xMove,0,zMove))
+    currView = m4mul(transform, currView)
+
+    gl.uniformMatrix4fv(program.uniforms.mv, false, currView)
     gl.uniformMatrix4fv(program.uniforms.p, false, p)
     
     gl.drawElements(geom.mode, geom.count, geom.type, 0)
 }
 
-// function fly(){
-//     if (keysBeingPressed['ArrowUp']) { 
-//         console.log("Up arrow pressed")
-//     }
-//     else if (keysBeingPressed['ArrowDown']) { 
-//         console.log("Down arrow pressed")
-//     }
-
-//     if (keysBeingPressed['ArrowLeft']) { 
-//         console.log("Left arrow pressed")
-//     }
-//     else if (keysBeingPressed['ArrowRight']) { 
-//         console.log("Right arrow pressed")
-//     }
-
-//     if (keysBeingPressed['w']) { 
-//         console.log("w arrow pressed")
-//     }
-//     else if (keysBeingPressed['s']) { 
-//         console.log("s arrow pressed")
-//     }
-
-//     if (keysBeingPressed['a']) { 
-//         console.log("a arrow pressed")
-//     }
-//     else if (keysBeingPressed['d']) { 
-//         console.log("d arrow pressed")
-//     }
-// }
-
 /** Compute any time-varying or animated aspects of the scene */
 function tick(milliseconds) {
     let seconds = milliseconds / 1000;
 
-    fly();
     draw(seconds)
     requestAnimationFrame(tick)
 }
